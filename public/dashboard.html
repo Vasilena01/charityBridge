@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Welcome, <span id="userName"></span>!</h1>
+            <nav>
+                <a href="profile.html">My Profile</a>
+                <a href="#" onclick="handleLogout(); return false;">Log Out</a>
+            </nav>
+        </header>
+
+        <main>
+            <div class="dashboard-info">
+                <h2>Your Dashboard</h2>
+                <p><strong>Email:</strong> <span id="userEmail"></span></p>
+                <p><strong>Role:</strong> <span id="userRole"></span></p>
+            </div>
+
+            <div id="roleSpecificContent" class="role-specific">
+                <!-- Role-specific content will be injected here -->
+            </div>
+        </main>
+    </div>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script>
+        // Initialize dashboard
+        (async function() {
+            const user = await requireAuth();
+
+            if (user) {
+                // Populate user data
+                document.getElementById('userName').textContent = user.first_name;
+                document.getElementById('userEmail').textContent = user.email;
+                document.getElementById('userRole').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+
+                // Show role-specific content
+                const roleContent = document.getElementById('roleSpecificContent');
+
+                if (user.role === 'volunteer') {
+                    roleContent.innerHTML = `
+                        <h3>Volunteer Actions</h3>
+                        <p>Campaign browsing and participation features coming in Phase 4 & 5.</p>
+                    `;
+                } else if (user.role === 'organizer') {
+                    roleContent.innerHTML = `
+                        <h3>Organizer Actions</h3>
+                        <p>Campaign creation features coming in Phase 2.</p>
+                    `;
+                } else if (user.role === 'company') {
+                    roleContent.innerHTML = `
+                        <h3>Company Actions</h3>
+                        <p>Company campaign registration features coming in Phase 7.</p>
+                    `;
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

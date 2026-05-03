@@ -9,6 +9,7 @@ define('DB_CHARSET', 'utf8mb4');
 // Application constants
 define('SITE_URL', 'http://localhost/charity-bridge');
 define('SITE_NAME', 'CharityBridge');
+define('API_URL', SITE_URL . '/api');
 
 // Password requirements
 define('PASSWORD_MIN_LENGTH', 8);
