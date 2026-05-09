@@ -31,24 +31,6 @@ try {
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_role ON users(role)");
     echo "✓ Created users indexes\n";
 
-    // Create password_reset_tokens table
-    $pdo->exec("
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            token TEXT UNIQUE NOT NULL,
-            expires_at DATETIME NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-        )
-    ");
-    echo "✓ Created password_reset_tokens table\n";
-
-    // Create indexes for password_reset_tokens
-    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_token ON password_reset_tokens(token)");
-    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_expires ON password_reset_tokens(expires_at)");
-    echo "✓ Created password_reset_tokens indexes\n";
-
     // Create sessions table
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS sessions (
