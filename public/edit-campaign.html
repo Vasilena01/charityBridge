@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Campaign - CharityBridge</title>
+    <title>Edit Campaign - CharityBridge</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="assets/css/create-campaign.css">
 </head>
@@ -21,12 +21,12 @@
 
     <div class="container">
         <div class="card create-campaign-form">
-            <h1>Create New Campaign</h1>
-            <p>Start making a difference today</p>
+            <h1>Edit Campaign</h1>
+            <p>Update your campaign details</p>
 
             <div id="message"></div>
 
-            <form id="createCampaignForm" onsubmit="handleCreateCampaign(event)">
+            <form id="editCampaignForm" onsubmit="handleEditCampaign(event)">
                 <div class="form-group">
                     <label for="title">Campaign Title</label>
                     <input type="text" id="title" name="title" required maxlength="255" placeholder="Enter a compelling title">
@@ -69,10 +69,10 @@
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" name="action" value="draft" class="btn btn-secondary">
-                        Save as Draft
+                    <button type="submit" name="action" value="save" class="btn btn-secondary">
+                        Save Changes
                     </button>
-                    <button type="submit" name="action" value="publish" class="btn btn-primary">
+                    <button type="submit" name="action" value="publish" class="btn btn-primary" id="publish-btn" style="display: none;">
                         Publish Campaign
                     </button>
                 </div>
@@ -94,6 +94,13 @@
     <script>
         // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
+
+        let campaignId = null;
+        let currentCampaign = null;
+
+        // Get campaign ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        campaignId = urlParams.get('id');
 
         // Set minimum deadline to tomorrow
         const tomorrow = new Date();
@@ -126,24 +133,84 @@
             const userJson = localStorage.getItem('user');
 
             if (!token || !userJson) {
-                window.location.href = 'login.html?redirect=create-campaign.html';
+                window.location.href = 'login.html?redirect=edit-campaign.html?id=' + campaignId;
                 return;
             }
 
             const user = JSON.parse(userJson);
             if (user.role !== 'organizer') {
-                alert('Only organizers can create campaigns.');
+                alert('Only organizers can edit campaigns.');
                 window.location.href = 'index.html';
                 return;
             }
+
+            if (!campaignId) {
+                alert('No campaign specified');
+                window.location.href = 'my-campaigns.html';
+                return;
+            }
+
+            loadCampaign();
         }
 
-        async function handleCreateCampaign(event) {
+        async function loadCampaign() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+
+                const response = await fetch(`/api/campaigns/?id=${campaignId}`, {
+                    credentials: 'include',
+                    headers: {
+                        'X-User-Id': user.id
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.campaign) {
+                    currentCampaign = data.campaign;
+
+                    // Check ownership
+                    if (currentCampaign.organizer_id !== user.id) {
+                        alert('You can only edit your own campaigns');
+                        window.location.href = 'my-campaigns.html';
+                        return;
+                    }
+
+                    // Populate form
+                    document.getElementById('title').value = currentCampaign.title;
+                    document.getElementById('description').value = currentCampaign.description;
+                    document.getElementById('campaign_type').value = currentCampaign.campaign_type;
+                    document.getElementById('goal_amount').value = currentCampaign.goal_amount;
+
+                    // Format date for input (YYYY-MM-DD)
+                    const deadlineDate = new Date(currentCampaign.deadline);
+                    document.getElementById('deadline').value = deadlineDate.toISOString().split('T')[0];
+
+                    // Show publish button if campaign is draft
+                    if (currentCampaign.status === 'draft') {
+                        document.getElementById('publish-btn').style.display = 'block';
+                    }
+
+                    // Initialize goal amount visibility
+                    toggleGoalAmount();
+                } else {
+                    showMessage('error', data.error || 'Campaign not found');
+                    setTimeout(() => {
+                        window.location.href = 'my-campaigns.html';
+                    }, 2000);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', 'An error occurred while loading the campaign');
+            }
+        }
+
+        async function handleEditCampaign(event) {
             event.preventDefault();
 
             const form = event.target;
             const submitButton = event.submitter;
-            const action = submitButton.value; // 'draft' or 'publish'
+            const action = submitButton.value; // 'save' or 'publish'
 
             const campaignType = form.campaign_type.value;
             let goalAmount = 1;
@@ -167,18 +234,22 @@
                 campaign_type: campaignType,
                 goal_amount: goalAmount,
                 deadline: form.deadline.value + 'T23:59:59',
-                visibility: 'public', // All campaigns are public
-                publish: action === 'publish'
+                visibility: 'public'
             };
+
+            // If action is publish, update status
+            if (action === 'publish') {
+                formData.status = 'published';
+            }
 
             try {
                 submitButton.disabled = true;
-                submitButton.textContent = 'Creating...';
+                submitButton.textContent = action === 'publish' ? 'Publishing...' : 'Saving...';
 
                 const user = JSON.parse(localStorage.getItem('user'));
 
-                const response = await fetch('/api/campaigns/', {
-                    method: 'POST',
+                const response = await fetch(`/api/campaigns/${campaignId}`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-User-Id': user.id
@@ -190,20 +261,21 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    showMessage('success', data.message || 'Campaign created successfully!');
+                    const message = action === 'publish' ? 'Campaign published successfully!' : 'Campaign updated successfully!';
+                    showMessage('success', message);
                     setTimeout(() => {
                         window.location.href = 'my-campaigns.html';
                     }, 1500);
                 } else {
-                    showMessage('error', data.error || 'Failed to create campaign');
+                    showMessage('error', data.error || 'Failed to update campaign');
                     submitButton.disabled = false;
-                    submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save as Draft';
+                    submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save Changes';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 showMessage('error', 'An error occurred. Please try again.');
                 submitButton.disabled = false;
-                submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save as Draft';
+                submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save Changes';
             }
         }
 
@@ -216,9 +288,6 @@
 
         // Check auth on page load
         checkAuth();
-
-        // Initialize goal amount visibility
-        toggleGoalAmount();
     </script>
 </body>
 </html>

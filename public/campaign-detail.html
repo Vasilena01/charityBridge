@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Details - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/campaign-detail.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="campaign-detail-container">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
+        <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/header-nav.js"></script>
+    <script>
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let currentUser = null;
+        let campaign = null;
+
+        // Get campaign ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const campaignId = urlParams.get('id');
+
+        function init() {
+            if (!campaignId) {
+                showError('No campaign specified');
+                return;
+            }
+
+            checkAuth();
+            loadCampaign();
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const userJson = localStorage.getItem('user');
+
+            if (token && userJson) {
+                currentUser = JSON.parse(userJson);
+            }
+        }
+
+        async function loadCampaign() {
+            try {
+                const response = await fetch(`/api/campaigns/?id=${campaignId}`, {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.campaign) {
+                    campaign = data.campaign;
+                    displayCampaign(campaign);
+                } else {
+                    showError(data.error || 'Campaign not found');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('An error occurred while loading the campaign');
+            }
+        }
+
+        function displayCampaign(campaign) {
+            const container = document.getElementById('campaign-detail-container');
+
+            const progress = (campaign.current_amount / campaign.goal_amount) * 100;
+            const deadline = new Date(campaign.deadline);
+            const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+            const isExpired = daysLeft < 0;
+
+            // Determine if user can support this campaign
+            let canSupport = false;
+            let supportButton = '';
+
+            if (!currentUser) {
+                supportButton = '<a href="signup.html" class="btn btn-primary">Sign Up to Support</a>';
+            } else if (currentUser.role === 'volunteer' || currentUser.role === 'company') {
+                canSupport = true;
+                supportButton = `
+                    <button onclick="showSupportModal()" class="btn btn-primary">
+                        ${currentUser.role === 'company' ? 'Support Campaign' : 'Donate / Volunteer'}
+                    </button>
+                `;
+            } else if (currentUser.role === 'organizer') {
+                if (campaign.organizer_id === currentUser.id) {
+                    supportButton = '<a href="my-campaigns.html" class="btn btn-secondary">Manage Campaign</a>';
+                } else {
+                    supportButton = '<p style="color: #95a5a6;">Organizers cannot donate to campaigns</p>';
+                }
+            }
+
+            container.innerHTML = `
+                <div class="campaign-detail-header">
+                    <a href="campaigns.html" class="back-link">← Back to Campaigns</a>
+                </div>
+
+                <div class="campaign-detail-card">
+                    <div class="campaign-detail-header-section">
+                        <div>
+                            <span class="campaign-type-badge">${formatCampaignType(campaign.campaign_type)}</span>
+                            <h1>${campaign.title}</h1>
+                            <div class="campaign-organizer">
+                                <span>Organized by: ${campaign.first_name} ${campaign.last_name}</span>
+                                <span class="status-badge status-${campaign.status}">${campaign.status}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="campaign-detail-body">
+                        <div class="campaign-detail-main">
+                            <div class="campaign-section">
+                                <h2>About This Campaign</h2>
+                                <p class="campaign-description">${campaign.description}</p>
+                            </div>
+
+                            <div class="campaign-section">
+                                <h3>Campaign Details</h3>
+                                <dl class="campaign-info-list">
+                                    <dt>Campaign Type:</dt>
+                                    <dd>${formatCampaignType(campaign.campaign_type)}</dd>
+
+                                    <dt>Deadline:</dt>
+                                    <dd>${deadline.toLocaleDateString()} ${isExpired ? '<span style="color: #e74c3c;">(Expired)</span>' : `(${daysLeft} days left)`}</dd>
+
+                                    <dt>Created:</dt>
+                                    <dd>${new Date(campaign.created_at).toLocaleDateString()}</dd>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <div class="campaign-detail-sidebar">
+                            <div class="campaign-progress-card">
+                                <h3>Campaign Progress</h3>
+
+                                <div class="progress-stats">
+                                    <div class="stat">
+                                        <div class="stat-value">${campaign.current_amount}</div>
+                                        <div class="stat-label">Raised</div>
+                                    </div>
+                                    <div class="stat">
+                                        <div class="stat-value">${campaign.goal_amount}</div>
+                                        <div class="stat-label">Goal</div>
+                                    </div>
+                                </div>
+
+                                <div class="progress-section">
+                                    <div class="progress-text">
+                                        <span class="progress-funded">${progress.toFixed(0)}% funded</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="campaign-actions">
+                                    ${supportButton}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatCampaignType(type) {
+            const types = {
+                'bazaar': 'Christmas Bazaar',
+                'online_game': 'Online Game',
+                'fundraiser': 'Fundraiser',
+                'volunteer': 'Volunteer Drive',
+                'goods': 'Goods Collection',
+                'other': 'Other'
+            };
+            return types[type] || type;
+        }
+
+        function showSupportModal() {
+            // TODO: Implement support modal for donations/volunteering
+            alert('Support functionality coming soon!');
+        }
+
+        function showError(message) {
+            document.getElementById('campaign-detail-container').innerHTML = `
+                <div class="empty-state">
+                    <h2>Error</h2>
+                    <p>${message}</p>
+                    <a href="campaigns.html" class="btn btn-secondary">Back to Campaigns</a>
+                </div>
+            `;
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>

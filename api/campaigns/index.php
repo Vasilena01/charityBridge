@@ -29,11 +29,16 @@ try {
     $uriParts = explode('/', trim($uri, '/'));
     $campaignId = isset($uriParts[2]) && is_numeric($uriParts[2]) ? (int)$uriParts[2] : null;
 
+    // Also check for ID in query parameter
+    if (!$campaignId && isset($_GET['id']) && is_numeric($_GET['id'])) {
+        $campaignId = (int)$_GET['id'];
+    }
+
     // Route based on HTTP method
     switch ($method) {
         case 'GET':
             if ($campaignId) {
-                // GET /api/campaigns/{id} - Get single campaign
+                // GET /api/campaigns/{id} or /api/campaigns?id={id} - Get single campaign
                 $response = getCampaign($campaignId, $pdo);
             } elseif (isset($_GET['my']) && $_GET['my'] === 'true') {
                 // GET /api/campaigns?my=true - Get current user's campaigns
@@ -140,15 +145,17 @@ function getCampaign($id, $pdo) {
         throw new Exception('Campaign not found');
     }
 
-    // Check visibility - if private, only owner can see
-    if ($campaign['visibility'] === 'private') {
-        $user = getCurrentUser($pdo);
+    $user = getCurrentUser($pdo);
+
+    // Draft campaigns - only owner can see
+    if ($campaign['status'] === 'draft') {
         if (!$user || $user['id'] != $campaign['organizer_id']) {
             http_response_code(403);
-            throw new Exception('Access denied');
+            throw new Exception('This campaign is not yet published');
         }
     }
 
+    // All published campaigns are public - everyone can see
     return [
         'success' => true,
         'campaign' => $campaign

@@ -10,7 +10,18 @@ $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 if (preg_match('#^/api/(.+?)/?$#', $uri, $matches)) {
     $apiPath = __DIR__ . '/../api/' . rtrim($matches[1], '/');
 
-    // Check if it's a directory with index.php
+    // For REST-style URLs like /api/campaigns/3, extract the base resource
+    $pathParts = explode('/', $matches[1]);
+    $baseResource = $pathParts[0];
+    $baseApiPath = __DIR__ . '/../api/' . $baseResource;
+
+    // Check if the base resource is a directory with index.php
+    if (is_dir($baseApiPath) && file_exists($baseApiPath . '/index.php')) {
+        require $baseApiPath . '/index.php';
+        return true;
+    }
+
+    // Check if it's a directory with index.php (for exact path)
     if (is_dir($apiPath) && file_exists($apiPath . '/index.php')) {
         require $apiPath . '/index.php';
         return true;

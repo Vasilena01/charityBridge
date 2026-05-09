@@ -20,11 +20,6 @@
     </header>
 
     <div class="container">
-        <!-- My Campaigns Section (only for organizers) -->
-        <div id="my-campaigns-section" class="hidden">
-            <!-- Will be populated by JavaScript for organizers -->
-        </div>
-
         <!-- Browse All Campaigns -->
         <div class="page-header">
             <div>
@@ -83,7 +78,6 @@
 
         let currentUser = null;
         let allCampaigns = [];
-        let myCampaigns = [];
 
         // Initialize page
         function init() {
@@ -101,79 +95,8 @@
                 // Show organizer-specific sections
                 if (currentUser.role === 'organizer') {
                     document.getElementById('organizer-actions').style.display = 'block';
-                    loadMyCampaigns();
                 }
             }
-        }
-
-        async function loadMyCampaigns() {
-            try {
-                const user = JSON.parse(localStorage.getItem('user'));
-
-                const response = await fetch('/api/campaigns/?my=true', {
-                    credentials: 'include',
-                    headers: {
-                        'X-User-Id': user.id
-                    }
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    myCampaigns = data.campaigns;
-                    displayMyCampaignsSection(myCampaigns);
-                }
-            } catch (error) {
-                console.error('Error loading my campaigns:', error);
-            }
-        }
-
-        function displayMyCampaignsSection(campaigns) {
-            const section = document.getElementById('my-campaigns-section');
-
-            if (campaigns.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-
-            section.style.display = 'block';
-
-            const campaignsList = campaigns.slice(0, 3).map(campaign => {
-                const progress = (campaign.current_amount / campaign.goal_amount) * 100;
-                return `
-                    <div class="campaign-card">
-                        <span class="campaign-type-badge">${formatCampaignType(campaign.campaign_type)}</span>
-                        <h3>${campaign.title}</h3>
-                        <div class="campaign-meta">
-                            <span>Deadline: ${new Date(campaign.deadline).toLocaleDateString()}</span>
-                            <span class="status-badge status-${campaign.status}">${campaign.status}</span>
-                        </div>
-                        <div class="progress-section">
-                            <div class="progress-text">
-                                <span>${progress.toFixed(0)}%</span>
-                                <span>${campaign.current_amount} / ${campaign.goal_amount}</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
-                            </div>
-                        </div>
-                        <div class="campaign-actions">
-                            <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-primary btn-small">View</a>
-                            <a href="my-campaigns.html" class="btn btn-secondary btn-small">Manage</a>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            section.innerHTML = `
-                <div class="section-header">
-                    <h2>My Campaigns</h2>
-                    <a href="my-campaigns.html" class="btn btn-secondary">View All →</a>
-                </div>
-                <div class="campaigns-grid">
-                    ${campaignsList}
-                </div>
-            `;
         }
 
         async function loadCampaigns() {
