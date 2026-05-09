@@ -191,9 +191,14 @@
             }
 
             try {
+                const user = JSON.parse(localStorage.getItem('user'));
+
                 const response = await fetch(`/api/campaigns/${id}`, {
                     method: 'DELETE',
-                    credentials: 'include'
+                    credentials: 'include',
+                    headers: {
+                        'X-User-Id': user.id
+                    }
                 });
 
                 const data = await response.json();
