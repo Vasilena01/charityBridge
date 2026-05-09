@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="color: white; margin: 0;">CharityBridge</h2>
+                <nav style="text-align: right;">
+                    <a href="index.html" style="color: white;">Home</a>
+                    <span id="user-welcome" style="margin-right: 15px; color: white;"></span>
+                    <button onclick="handleLogout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card" style="margin-top: 40px;">
+            <h1 style="color: #ff6b6b; margin-bottom: 20px;">My Profile</h1>
+
+            <div class="profile-info">
+                <dl>
+                    <dt>Email:</dt>
+                    <dd id="user-email">Loading...</dd>
+
+                    <dt>First Name:</dt>
+                    <dd id="user-first-name">Loading...</dd>
+
+                    <dt>Last Name:</dt>
+                    <dd id="user-last-name">Loading...</dd>
+
+                    <dt>Role:</dt>
+                    <dd id="user-role">Loading...</dd>
+
+                    <dt>Bio:</dt>
+                    <dd id="user-bio" style="font-style: italic; color: #7f8c8d;">No bio added yet</dd>
+                </dl>
+            </div>
+
+            <div style="margin-top: 30px; text-align: center;">
+                <a href="index.html" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
+
+        <div class="features" style="margin-top: 40px;">
+            <div class="feature-card">
+                <h3>Browse Campaigns</h3>
+                <p>Discover and support charitable campaigns in your community.</p>
+                <a href="campaigns.html" class="btn btn-secondary">View Campaigns</a>
+            </div>
+
+            <div class="feature-card" id="organizer-section" style="display: none;">
+                <h3>My Campaigns</h3>
+                <p>Manage your charitable campaigns and track progress.</p>
+                <a href="my-campaigns.html" class="btn btn-secondary">Manage Campaigns</a>
+            </div>
+
+            <div class="feature-card">
+                <h3>Settings</h3>
+                <p>Update your profile information and preferences.</p>
+                <a href="#" class="btn btn-secondary">Edit Profile</a>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
+        <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script>
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Load user data
+        async function loadProfile() {
+            const user = await requireAuth();
+
+            if (user) {
+                document.getElementById('user-welcome').textContent = `Welcome, ${user.first_name}!`;
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-first-name').textContent = user.first_name;
+                document.getElementById('user-last-name').textContent = user.last_name;
+                document.getElementById('user-role').textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+
+                if (user.bio) {
+                    document.getElementById('user-bio').textContent = user.bio;
+                    document.getElementById('user-bio').style.fontStyle = 'normal';
+                    document.getElementById('user-bio').style.color = '#2c3e50';
+                }
+
+                // Show organizer section if applicable
+                if (user.role === 'organizer' || user.role === 'company') {
+                    document.getElementById('organizer-section').style.display = 'block';
+                }
+            }
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>

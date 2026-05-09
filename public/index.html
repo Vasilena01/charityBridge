@@ -7,18 +7,77 @@
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <nav style="text-align: right;">
-                <a href="login.html">Log In</a>
-                <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+    <header>
+        <div class="header-content">
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper">
+                    <div class="nav-left"></div>
+                    <div class="nav-right">
+                        <a href="login.html" class="nav-link">Log In</a>
+                        <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+                    </div>
+                </div>
             </nav>
-        </header>
+        </div>
+    </header>
 
+    <div class="container">
         <div class="hero">
             <h1>CharityBridge</h1>
             <p>Support charitable campaigns through donations, volunteering, and community action</p>
-            <div id="hero-buttons">
+
+            <!-- Image Carousel -->
+            <div class="carousel">
+                <div class="carousel-inner" id="carouselInner">
+                    <div class="carousel-item">
+                        <img src="assets/images/carousel-1.jpg" alt="Volunteers helping together">
+                        <div class="carousel-caption">
+                            <h3>Join Our Community</h3>
+                            <p>Together we make a bigger impact</p>
+                        </div>
+                    </div>
+                    <div class="carousel-item">
+                        <img src="assets/images/carousel-2.jpg" alt="Volunteers helping community">
+                        <div class="carousel-caption">
+                            <h3>Make an Impact</h3>
+                            <p>Your time and effort create real change</p>
+                        </div>
+                    </div>
+                    <div class="carousel-item">
+                        <img src="assets/images/carousel-3.jpg" alt="Helping hands reaching out">
+                        <div class="carousel-caption">
+                            <h3>Reach Out and Help</h3>
+                            <p>Your kindness can change someone's world</p>
+                        </div>
+                    </div>
+                    <div class="carousel-item">
+                        <img src="assets/images/carousel-4.jpg" alt="Community helping each other">
+                        <div class="carousel-caption">
+                            <h3>Community Together</h3>
+                            <p>Supporting each other makes us stronger</p>
+                        </div>
+                    </div>
+                    <div class="carousel-item">
+                        <img src="assets/images/carousel-5.jpg" alt="Children receiving help">
+                        <div class="carousel-caption">
+                            <h3>Support Those in Need</h3>
+                            <p>Give children the chance they deserve</p>
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-control prev" onclick="moveCarousel(-1)">‹</button>
+                <button class="carousel-control next" onclick="moveCarousel(1)">›</button>
+                <div class="carousel-indicators">
+                    <button class="carousel-indicator active" onclick="showSlide(0)"></button>
+                    <button class="carousel-indicator" onclick="showSlide(1)"></button>
+                    <button class="carousel-indicator" onclick="showSlide(2)"></button>
+                    <button class="carousel-indicator" onclick="showSlide(3)"></button>
+                    <button class="carousel-indicator" onclick="showSlide(4)"></button>
+                </div>
+            </div>
+
+            <div id="hero-buttons" style="margin-top: 30px;">
                 <a href="signup.html" class="btn btn-primary">Get Started</a>
                 <a href="login.html" class="btn btn-secondary">Log In</a>
             </div>
@@ -50,7 +109,8 @@
         </div>
     </div>
 
-    <footer style="text-align: center; padding: 40px 20px; color: #666;">
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
         <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
     </footer>
 
@@ -60,44 +120,76 @@
         // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
 
+        // Carousel functionality
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.carousel-item');
+        const indicators = document.querySelectorAll('.carousel-indicator');
+        const carouselInner = document.getElementById('carouselInner');
+
+        function showSlide(index) {
+            if (index >= slides.length) currentSlide = 0;
+            else if (index < 0) currentSlide = slides.length - 1;
+            else currentSlide = index;
+
+            carouselInner.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+            indicators.forEach((indicator, i) => {
+                indicator.classList.toggle('active', i === currentSlide);
+            });
+        }
+
+        function moveCarousel(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        // Auto-advance carousel every 5 seconds
+        setInterval(() => {
+            moveCarousel(1);
+        }, 5000);
+
         // Update page based on auth status
         function updatePageForAuth() {
             const token = localStorage.getItem('auth_token');
             const userJson = localStorage.getItem('user');
 
-            // Update navigation
-            const nav = document.querySelector('nav');
-            if (nav) {
+            // Update header navigation
+            const headerNav = document.getElementById('header-nav');
+            if (headerNav) {
                 if (token && userJson) {
                     const user = JSON.parse(userJson);
-                    nav.innerHTML = `
-                        <span style="margin-right: 15px;">Welcome, ${user.first_name}!</span>
-                        <button onclick="handleLogout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
+                    headerNav.innerHTML = `
+                        <div class="nav-left">
+                            <a href="campaigns.html" class="nav-link">Browse Campaigns</a>
+                            <a href="profile.html" class="nav-link">My Profile</a>
+                        </div>
+                        <div class="nav-right">
+                            <span class="welcome-text">Welcome, ${user.first_name}!</span>
+                            <a href="#" onclick="handleLogout(); return false;" class="nav-link">Logout</a>
+                        </div>
                     `;
                 } else {
-                    nav.innerHTML = `
-                        <a href="login.html">Log In</a>
-                        <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+                    headerNav.innerHTML = `
+                        <div class="nav-left"></div>
+                        <div class="nav-right">
+                            <a href="login.html" class="nav-link">Log In</a>
+                            <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+                        </div>
                     `;
                 }
             }
 
-            // Update hero buttons and CTA based on auth
+            // Update hero buttons based on auth
+            const heroButtons = document.getElementById('hero-buttons');
             if (token && userJson) {
-                const user = JSON.parse(userJson);
-
-                // Replace hero buttons with navigation
-                const heroButtons = document.getElementById('hero-buttons');
+                // Hide hero buttons when logged in
                 if (heroButtons) {
-                    heroButtons.innerHTML = `
-                        <a href="campaigns.html" class="btn btn-primary">Browse Campaigns</a>
-                        <a href="profile.html" class="btn btn-secondary">My Profile</a>
-                    `;
+                    heroButtons.style.display = 'none';
                 }
 
                 // Replace CTA button with role-specific actions
                 const ctaButton = document.getElementById('cta-button');
                 if (ctaButton) {
+                    const user = JSON.parse(userJson);
                     let ctaContent = '';
                     if (user.role === 'organizer' || user.role === 'company') {
                         ctaContent = `
@@ -111,6 +203,11 @@
                         `;
                     }
                     ctaButton.innerHTML = ctaContent;
+                }
+            } else {
+                // Show hero buttons when not logged in
+                if (heroButtons) {
+                    heroButtons.style.display = 'block';
                 }
             }
         }

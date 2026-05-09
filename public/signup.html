@@ -8,53 +8,58 @@
 </head>
 <body>
     <div class="container">
-        <h1>Sign Up for CharityBridge</h1>
+        <div class="card" style="max-width: 600px; margin: 50px auto;">
+            <h1 style="text-align: center; color: #ff6b6b; margin-bottom: 10px;">Join CharityBridge 🌟</h1>
+            <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">Start making a difference today</p>
 
-        <div id="message"></div>
+            <div id="message"></div>
 
-        <form id="signupForm" onsubmit="handleSignup(event)">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
+            <form id="signupForm" onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required placeholder="your@email.com">
+                </div>
 
-            <div class="form-group">
-                <label for="first_name">First Name:</label>
-                <input type="text" id="first_name" name="first_name" required maxlength="100">
-            </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="first_name">First Name:</label>
+                        <input type="text" id="first_name" name="first_name" required maxlength="100" placeholder="John">
+                    </div>
 
-            <div class="form-group">
-                <label for="last_name">Last Name:</label>
-                <input type="text" id="last_name" name="last_name" required maxlength="100">
-            </div>
+                    <div class="form-group">
+                        <label for="last_name">Last Name:</label>
+                        <input type="text" id="last_name" name="last_name" required maxlength="100" placeholder="Doe">
+                    </div>
+                </div>
 
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required minlength="8">
-                <small>Minimum 8 characters</small>
-            </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required minlength="8" placeholder="Minimum 8 characters">
+                    <small>Minimum 8 characters</small>
+                </div>
 
-            <div class="form-group">
-                <label for="password_confirm">Confirm Password:</label>
-                <input type="password" id="password_confirm" name="password_confirm" required>
-            </div>
+                <div class="form-group">
+                    <label for="password_confirm">Confirm Password:</label>
+                    <input type="password" id="password_confirm" name="password_confirm" required placeholder="Re-enter your password">
+                </div>
 
-            <div class="form-group">
-                <label for="role">I am a:</label>
-                <select id="role" name="role" required>
-                    <option value="">-- Select Role --</option>
-                    <option value="volunteer">Volunteer/Donor</option>
-                    <option value="organizer">Campaign Organizer</option>
-                    <option value="company">Company Representative</option>
-                </select>
-            </div>
+                <div class="form-group">
+                    <label for="role">I am a:</label>
+                    <select id="role" name="role" required>
+                        <option value="">-- Select Role --</option>
+                        <option value="volunteer">🤝 Volunteer/Donor</option>
+                        <option value="organizer">📋 Campaign Organizer</option>
+                        <option value="company">🏢 Company Representative</option>
+                    </select>
+                </div>
 
-            <button type="submit" class="btn btn-primary">Sign Up</button>
-        </form>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up</button>
+            </form>
 
-        <p class="text-center">
-            Already have an account? <a href="login.html">Log in</a>
-        </p>
+            <p class="text-center">
+                Already have an account? <a href="login.html" style="color: #ff6b6b; font-weight: 600;">Log in</a>
+            </p>
+        </div>
     </div>
 
     <script src="assets/js/api.js"></script>
