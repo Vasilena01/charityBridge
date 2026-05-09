@@ -18,8 +18,10 @@
         <div class="hero">
             <h1>CharityBridge</h1>
             <p>Support charitable campaigns through donations, volunteering, and community action</p>
-            <a href="signup.html" class="btn btn-primary">Get Started</a>
-            <a href="login.html" class="btn btn-secondary">Log In</a>
+            <div id="hero-buttons">
+                <a href="signup.html" class="btn btn-primary">Get Started</a>
+                <a href="login.html" class="btn btn-secondary">Log In</a>
+            </div>
         </div>
 
         <div class="features">
@@ -42,7 +44,9 @@
         <div class="card" style="text-align: center; margin-top: 40px;">
             <h2>How It Works</h2>
             <p style="margin: 20px 0;">CharityBridge connects people who want to help with campaigns that need support. Whether you're organizing a Christmas bazaar, running an online fundraiser, or coordinating volunteer efforts, we make it easy to track contributions of all types.</p>
-            <a href="signup.html" class="btn btn-primary">Join Now</a>
+            <div id="cta-button">
+                <a href="signup.html" class="btn btn-primary">Join Now</a>
+            </div>
         </div>
     </div>
 
@@ -56,8 +60,62 @@
         // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Redirect if already logged in
-        redirectIfAuthenticated();
+        // Update page based on auth status
+        function updatePageForAuth() {
+            const token = localStorage.getItem('auth_token');
+            const userJson = localStorage.getItem('user');
+
+            // Update navigation
+            const nav = document.querySelector('nav');
+            if (nav) {
+                if (token && userJson) {
+                    const user = JSON.parse(userJson);
+                    nav.innerHTML = `
+                        <span style="margin-right: 15px;">Welcome, ${user.first_name}!</span>
+                        <button onclick="handleLogout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
+                    `;
+                } else {
+                    nav.innerHTML = `
+                        <a href="login.html">Log In</a>
+                        <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+                    `;
+                }
+            }
+
+            // Update hero buttons and CTA based on auth
+            if (token && userJson) {
+                const user = JSON.parse(userJson);
+
+                // Replace hero buttons with navigation
+                const heroButtons = document.getElementById('hero-buttons');
+                if (heroButtons) {
+                    heroButtons.innerHTML = `
+                        <a href="campaigns.html" class="btn btn-primary">Browse Campaigns</a>
+                        <a href="profile.html" class="btn btn-secondary">My Profile</a>
+                    `;
+                }
+
+                // Replace CTA button with role-specific actions
+                const ctaButton = document.getElementById('cta-button');
+                if (ctaButton) {
+                    let ctaContent = '';
+                    if (user.role === 'organizer' || user.role === 'company') {
+                        ctaContent = `
+                            <a href="create-campaign.html" class="btn btn-primary">Create Campaign</a>
+                            <a href="my-campaigns.html" class="btn btn-secondary">My Campaigns</a>
+                        `;
+                    } else {
+                        ctaContent = `
+                            <a href="campaigns.html" class="btn btn-primary">Explore Campaigns</a>
+                            <a href="profile.html" class="btn btn-secondary">My Profile</a>
+                        `;
+                    }
+                    ctaButton.innerHTML = ctaContent;
+                }
+            }
+        }
+
+        updatePageForAuth();
     </script>
 </body>
 </html>

@@ -56,10 +56,13 @@ async function handleLogin(event) {
 
     if (response.success) {
         showSuccess('Login successful! Redirecting...');
-        // Store user info in sessionStorage
-        sessionStorage.setItem('user', JSON.stringify(response.user));
+
+        // Store user info and token in localStorage (simple approach for uni project)
+        localStorage.setItem('auth_token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
+
         setTimeout(() => {
-            window.location.href = 'dashboard.html';
+            window.location.href = 'profile.html';
         }, 1000);
     } else {
         showError(response.error || 'Login failed. Please try again.');
@@ -70,36 +73,61 @@ async function handleLogin(event) {
  * Handle logout
  */
 async function handleLogout() {
-    const response = await API.logout();
+    // Clear localStorage
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
 
-    if (response.success) {
-        sessionStorage.removeItem('user');
-        window.location.href = 'index.html';
-    }
+    // Redirect to home
+    window.location.href = 'index.html';
 }
 
 /**
  * Check if user is logged in, redirect if needed
  */
 async function requireAuth() {
-    const session = await API.checkSession();
+    const token = localStorage.getItem('auth_token');
+    const user = localStorage.getItem('user');
 
-    if (!session.authenticated) {
+    if (!token || !user) {
         window.location.href = 'login.html';
         return null;
     }
 
-    return session.user;
+    return JSON.parse(user);
 }
 
 /**
  * Check if user is logged in, redirect to dashboard if yes
  */
 async function redirectIfAuthenticated() {
-    const session = await API.checkSession();
+    const token = localStorage.getItem('auth_token');
 
-    if (session.authenticated) {
-        window.location.href = 'dashboard.html';
+    if (token) {
+        window.location.href = 'profile.html';
+    }
+}
+
+/**
+ * Update nav based on authentication status
+ */
+async function updateNavForAuth() {
+    const token = localStorage.getItem('auth_token');
+    const userJson = localStorage.getItem('user');
+    const nav = document.querySelector('nav');
+
+    if (!nav) return;
+
+    if (token && userJson) {
+        const user = JSON.parse(userJson);
+        nav.innerHTML = `
+            <span style="margin-right: 15px;">Welcome, ${user.first_name}!</span>
+            <button onclick="handleLogout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
+        `;
+    } else {
+        nav.innerHTML = `
+            <a href="login.html">Log In</a>
+            <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+        `;
     }
 }
 

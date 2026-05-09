@@ -1,12 +1,19 @@
 <?php
-require_once '../../backend/includes/config.php';
-require_once '../../backend/includes/auth.php';
+require_once __DIR__ . '/../../backend/includes/config.php';
+require_once __DIR__ . '/../../backend/includes/auth.php';
 
 // Set JSON header
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Origin: http://localhost:8000');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Credentials: true');  // IMPORTANT: Allow credentials
+
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 // Only accept POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -51,23 +58,20 @@ try {
     $hash = $user ? $user['password_hash'] : password_hash('dummy', PASSWORD_DEFAULT);
 
     if ($user && password_verify($password, $hash)) {
-        // Successful login - regenerate session ID (prevent session fixation)
-        session_regenerate_id(true);
+        // Successful login - generate a simple token
+        $token = bin2hex(random_bytes(32));
 
-        // Set session variables
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['user_email'] = $user['email'];
-        $_SESSION['user_role'] = $user['role'];
-        $_SESSION['user_first_name'] = $user['first_name'];
-        $_SESSION['user_last_name'] = $user['last_name'];
+        // Store token in database (optional - we'll just return it)
 
         $response['success'] = true;
+        $response['token'] = $token;
         $response['user'] = [
             'id' => $user['id'],
             'email' => $user['email'],
             'first_name' => $user['first_name'],
             'last_name' => $user['last_name'],
-            'role' => $user['role']
+            'role' => $user['role'],
+            'bio' => $user['bio'] ?? null
         ];
     } else {
         throw new Exception('Invalid email or password.');
@@ -78,4 +82,10 @@ try {
 }
 
 echo json_encode($response);
+
+// Debug: Output session cookie header
+if ($response['success']) {
+    error_log("Setting session cookie with ID: " . session_id());
+    error_log("Cookie params: " . print_r(session_get_cookie_params(), true));
+}
 ?>

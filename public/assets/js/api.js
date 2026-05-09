@@ -30,8 +30,30 @@ const API = {
 
         try {
             const response = await fetch(url, config);
-            const data = await response.json();
-            return data;
+
+            // Get response text first
+            const text = await response.text();
+
+            // Check if response is ok
+            if (!response.ok) {
+                console.error('API error:', response.status, text);
+                return {
+                    success: false,
+                    error: `Server error: ${response.status}`
+                };
+            }
+
+            // Try to parse as JSON
+            try {
+                const data = JSON.parse(text);
+                return data;
+            } catch (jsonError) {
+                console.error('Invalid JSON response:', text.substring(0, 200));
+                return {
+                    success: false,
+                    error: 'Invalid server response. Please check if the backend is running correctly.'
+                };
+            }
         } catch (error) {
             console.error('API request failed:', error);
             return { success: false, error: 'Network error. Please try again.' };
