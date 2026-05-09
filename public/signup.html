@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up - CharityBridge</title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/signup.css">
 </head>
 <body>
     <div class="container">
-        <div class="card" style="max-width: 600px; margin: 50px auto;">
-            <h1 style="text-align: center; color: #ff6b6b; margin-bottom: 10px;">Join CharityBridge 🌟</h1>
-            <p style="text-align: center; color: #7f8c8d; margin-bottom: 30px;">Start making a difference today</p>
+        <div class="card signup-card">
+            <h1>Join CharityBridge</h1>
+            <p>Start making a difference today</p>
 
             <div id="message"></div>
 
@@ -20,7 +21,7 @@
                     <input type="email" id="email" name="email" required placeholder="your@email.com">
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">First Name:</label>
                         <input type="text" id="first_name" name="first_name" required maxlength="100" placeholder="John">
@@ -47,17 +48,17 @@
                     <label for="role">I am a:</label>
                     <select id="role" name="role" required>
                         <option value="">-- Select Role --</option>
-                        <option value="volunteer">🤝 Volunteer/Donor</option>
-                        <option value="organizer">📋 Campaign Organizer</option>
-                        <option value="company">🏢 Company Representative</option>
+                        <option value="volunteer">Volunteer/Donor</option>
+                        <option value="organizer">Campaign Organizer</option>
+                        <option value="company">Company Representative</option>
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up</button>
+                <button type="submit" class="btn btn-primary">Sign Up</button>
             </form>
 
             <p class="text-center">
-                Already have an account? <a href="login.html" style="color: #ff6b6b; font-weight: 600;">Log in</a>
+                Already have an account? <a href="login.html">Log in</a>
             </p>
         </div>
     </div>

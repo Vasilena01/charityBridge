@@ -5,24 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile - CharityBridge</title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/profile.css">
 </head>
 <body>
     <header>
         <div class="header-content">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h2 style="color: white; margin: 0;">CharityBridge</h2>
-                <nav style="text-align: right;">
-                    <a href="index.html" style="color: white;">Home</a>
-                    <span id="user-welcome" style="margin-right: 15px; color: white;"></span>
-                    <button onclick="handleLogout()" class="btn btn-secondary" style="padding: 8px 16px;">Logout</button>
-                </nav>
-            </div>
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </nav>
         </div>
     </header>
 
     <div class="container">
-        <div class="card" style="margin-top: 40px;">
-            <h1 style="color: #ff6b6b; margin-bottom: 20px;">My Profile</h1>
+        <div class="card profile-card">
+            <h1>My Profile</h1>
 
             <div class="profile-info">
                 <dl>
@@ -39,23 +38,23 @@
                     <dd id="user-role">Loading...</dd>
 
                     <dt>Bio:</dt>
-                    <dd id="user-bio" style="font-style: italic; color: #7f8c8d;">No bio added yet</dd>
+                    <dd id="user-bio">No bio added yet</dd>
                 </dl>
             </div>
 
-            <div style="margin-top: 30px; text-align: center;">
+            <div class="profile-actions">
                 <a href="index.html" class="btn btn-secondary">Back to Home</a>
             </div>
         </div>
 
-        <div class="features" style="margin-top: 40px;">
+        <div class="features profile-features">
             <div class="feature-card">
                 <h3>Browse Campaigns</h3>
                 <p>Discover and support charitable campaigns in your community.</p>
                 <a href="campaigns.html" class="btn btn-secondary">View Campaigns</a>
             </div>
 
-            <div class="feature-card" id="organizer-section" style="display: none;">
+            <div class="feature-card hidden" id="organizer-section">
                 <h3>My Campaigns</h3>
                 <p>Manage your charitable campaigns and track progress.</p>
                 <a href="my-campaigns.html" class="btn btn-secondary">Manage Campaigns</a>
@@ -76,6 +75,7 @@
 
     <script src="assets/js/api.js"></script>
     <script src="assets/js/auth.js"></script>
+    <script src="assets/js/header-nav.js"></script>
     <script>
         // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
@@ -85,7 +85,6 @@
             const user = await requireAuth();
 
             if (user) {
-                document.getElementById('user-welcome').textContent = `Welcome, ${user.first_name}!`;
                 document.getElementById('user-email').textContent = user.email;
                 document.getElementById('user-first-name').textContent = user.first_name;
                 document.getElementById('user-last-name').textContent = user.last_name;

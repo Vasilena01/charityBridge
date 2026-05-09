@@ -1,0 +1,22 @@
+/* Index/Homepage specific styles */
+
+.header-nav-wrapper .btn-primary {
+    padding: 8px 16px;
+}
+
+.hero {
+    margin-bottom: 40px;
+}
+
+#hero-buttons {
+    margin-top: 30px;
+}
+
+.how-it-works {
+    text-align: center;
+    margin-top: 40px;
+}
+
+.how-it-works p {
+    margin: 20px 0;
+}

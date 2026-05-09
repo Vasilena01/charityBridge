@@ -1,0 +1,71 @@
+/* Create Campaign page specific styles */
+
+.create-campaign-form {
+    max-width: 800px;
+    margin: 50px auto;
+}
+
+.create-campaign-form h1 {
+    text-align: center;
+    color: #ff6b6b;
+    margin-bottom: 10px;
+}
+
+.create-campaign-form > p {
+    text-align: center;
+    color: #7f8c8d;
+    margin-bottom: 30px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.form-group small {
+    color: #7f8c8d;
+}
+
+.form-group input[type="number"],
+.form-group input[type="date"] {
+    font-size: 16px;
+}
+
+/* Keep the calendar icon for date picker */
+.form-group input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    filter: invert(48%) sepia(79%) saturate(2476%) hue-rotate(326deg) brightness(100%) contrast(102%);
+}
+
+.form-group input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+#goal-amount-group {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#goal-amount-group.hidden {
+    display: none;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.form-actions button {
+    flex: 1;
+}
+
+.form-cancel {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.form-cancel a {
+    color: #ff6b6b;
+}

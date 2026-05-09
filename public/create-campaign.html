@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Campaign - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/create-campaign.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card create-campaign-form">
+            <h1>Create New Campaign</h1>
+            <p>Start making a difference today</p>
+
+            <div id="message"></div>
+
+            <form id="createCampaignForm" onsubmit="handleCreateCampaign(event)">
+                <div class="form-group">
+                    <label for="title">Campaign Title</label>
+                    <input type="text" id="title" name="title" required maxlength="255" placeholder="Enter a compelling title">
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description" name="description" required rows="6" placeholder="Describe your campaign, its goals, and how contributions will be used"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="campaign_type">Campaign Type</label>
+                        <select id="campaign_type" name="campaign_type" required onchange="toggleGoalAmount()">
+                            <option value="">-- Select Type --</option>
+                            <option value="bazaar">Christmas Bazaar</option>
+                            <option value="online_game">Online Game</option>
+                            <option value="fundraiser">General Fundraiser</option>
+                            <option value="volunteer">Volunteer Drive</option>
+                            <option value="goods">Goods Collection</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="goal-amount-group">
+                        <label for="goal_amount">Goal Amount</label>
+                        <input type="text" id="goal_amount" name="goal_amount" placeholder="e.g. 10000">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="deadline">Campaign Deadline</label>
+                        <input type="date" id="deadline" name="deadline" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="visibility">Visibility</label>
+                        <select id="visibility" name="visibility" required>
+                            <option value="public">Public (Everyone can see)</option>
+                            <option value="private">Private (Invitation only)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" name="action" value="draft" class="btn btn-secondary">
+                        Save as Draft
+                    </button>
+                    <button type="submit" name="action" value="publish" class="btn btn-primary">
+                        Publish Campaign
+                    </button>
+                </div>
+
+                <div class="form-cancel">
+                    <a href="my-campaigns.html">Cancel and return to my campaigns</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
+        <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/header-nav.js"></script>
+    <script>
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Set minimum deadline to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        document.getElementById('deadline').min = tomorrow.toISOString().split('T')[0];
+
+        // Toggle goal amount visibility based on campaign type
+        function toggleGoalAmount() {
+            const campaignType = document.getElementById('campaign_type').value;
+            const goalAmountGroup = document.getElementById('goal-amount-group');
+            const goalAmountInput = document.getElementById('goal_amount');
+
+            // Hide goal amount for volunteer drives and goods collection
+            if (campaignType === 'volunteer' || campaignType === 'goods') {
+                goalAmountGroup.style.display = 'none';
+                goalAmountInput.removeAttribute('required');
+                goalAmountInput.value = '1'; // Set default value for backend
+            } else {
+                goalAmountGroup.style.display = 'block';
+                goalAmountInput.setAttribute('required', 'required');
+                if (goalAmountInput.value === '1') {
+                    goalAmountInput.value = ''; // Clear default value
+                }
+            }
+        }
+
+        // Check authentication and role
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const userJson = localStorage.getItem('user');
+
+            if (!token || !userJson) {
+                window.location.href = 'login.html?redirect=create-campaign.html';
+                return;
+            }
+
+            const user = JSON.parse(userJson);
+            if (user.role !== 'organizer') {
+                alert('Only organizers can create campaigns.');
+                window.location.href = 'index.html';
+                return;
+            }
+        }
+
+        async function handleCreateCampaign(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const submitButton = event.submitter;
+            const action = submitButton.value; // 'draft' or 'publish'
+
+            const campaignType = form.campaign_type.value;
+            let goalAmount = 1;
+
+            // Only include goal amount for monetary campaigns
+            if (campaignType !== 'volunteer' && campaignType !== 'goods') {
+                const goalAmountValue = form.goal_amount.value.trim();
+
+                // Validate that goal amount is a positive number
+                if (!goalAmountValue || isNaN(goalAmountValue) || parseFloat(goalAmountValue) <= 0) {
+                    showMessage('error', 'Please enter a valid goal amount (positive number)');
+                    return;
+                }
+
+                goalAmount = parseFloat(goalAmountValue);
+            }
+
+            const formData = {
+                title: form.title.value.trim(),
+                description: form.description.value.trim(),
+                campaign_type: campaignType,
+                goal_amount: goalAmount,
+                deadline: form.deadline.value + 'T23:59:59',
+                visibility: form.visibility.value,
+                publish: action === 'publish'
+            };
+
+            try {
+                submitButton.disabled = true;
+                submitButton.textContent = 'Creating...';
+
+                const user = JSON.parse(localStorage.getItem('user'));
+
+                const response = await fetch('/api/campaigns/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': user.id
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage('success', data.message || 'Campaign created successfully!');
+                    setTimeout(() => {
+                        window.location.href = 'my-campaigns.html';
+                    }, 1500);
+                } else {
+                    showMessage('error', data.error || 'Failed to create campaign');
+                    submitButton.disabled = false;
+                    submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save as Draft';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('error', 'An error occurred. Please try again.');
+                submitButton.disabled = false;
+                submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save as Draft';
+            }
+        }
+
+        function showMessage(type, message) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = type === 'success' ? 'success' : 'errors';
+            messageDiv.innerHTML = `<p>${message}</p>`;
+            messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        // Check auth on page load
+        checkAuth();
+
+        // Initialize goal amount visibility
+        toggleGoalAmount();
+    </script>
+</body>
+</html>

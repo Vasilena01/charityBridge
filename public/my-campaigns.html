@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Campaigns - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/my-campaigns.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="campaigns-header">
+            <div>
+                <h1>My Campaigns</h1>
+                <p>Manage and track your charitable campaigns</p>
+            </div>
+            <a href="create-campaign.html" class="btn btn-primary">+ Create Campaign</a>
+        </div>
+
+        <div class="stats-grid" id="stats">
+            <!-- Will be populated by JavaScript -->
+        </div>
+
+        <div id="campaigns-list">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
+        <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/header-nav.js"></script>
+    <script>
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let currentUser = null;
+
+        // Check authentication and role
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const userJson = localStorage.getItem('user');
+
+            if (!token || !userJson) {
+                window.location.href = 'login.html?redirect=my-campaigns.html';
+                return;
+            }
+
+            currentUser = JSON.parse(userJson);
+            if (currentUser.role !== 'organizer') {
+                alert('Only organizers can access this page.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Load campaigns
+            loadCampaigns();
+        }
+
+        async function loadCampaigns() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+
+                const response = await fetch('/api/campaigns/?my=true', {
+                    credentials: 'include',
+                    headers: {
+                        'X-User-Id': user.id
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayStats(data.campaigns);
+                    displayCampaigns(data.campaigns);
+                } else {
+                    showError(data.error || 'Failed to load campaigns');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('An error occurred while loading campaigns');
+            }
+        }
+
+        function displayStats(campaigns) {
+            const total = campaigns.length;
+            const active = campaigns.filter(c => c.status === 'published').length;
+            const draft = campaigns.filter(c => c.status === 'draft').length;
+            const completed = campaigns.filter(c => c.status === 'successful' || c.status === 'ended').length;
+
+            const statsHTML = `
+                <div class="stat-card">
+                    <h3>${total}</h3>
+                    <p>Total Campaigns</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${active}</h3>
+                    <p>Active</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${draft}</h3>
+                    <p>Drafts</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${completed}</h3>
+                    <p>Completed</p>
+                </div>
+            `;
+
+            document.getElementById('stats').innerHTML = statsHTML;
+        }
+
+        function displayCampaigns(campaigns) {
+            const listDiv = document.getElementById('campaigns-list');
+
+            if (campaigns.length === 0) {
+                listDiv.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No campaigns yet</h2>
+                        <p>Create your first campaign to start making a difference!</p>
+                        <a href="create-campaign.html" class="btn btn-primary">Create Your First Campaign</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const campaignsHTML = campaigns.map(campaign => {
+                const progress = (campaign.current_amount / campaign.goal_amount) * 100;
+                const deadline = new Date(campaign.deadline);
+                const isExpired = deadline < new Date();
+                const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+
+                return `
+                    <div class="campaign-card">
+                        <div class="campaign-header">
+                            <div class="campaign-title">
+                                <h3>${campaign.title}</h3>
+                                <span class="status-badge status-${campaign.status}">${campaign.status}</span>
+                            </div>
+                        </div>
+
+                        <div class="campaign-meta">
+                            <span>Deadline: ${deadline.toLocaleDateString()}</span>
+                            <span>${isExpired ? 'Expired' : daysLeft + ' days left'}</span>
+                            <span>Visibility: ${campaign.visibility === 'public' ? 'Public' : 'Private'}</span>
+                            <span>Type: ${campaign.campaign_type}</span>
+                        </div>
+
+                        <p>${campaign.description.substring(0, 150)}${campaign.description.length > 150 ? '...' : ''}</p>
+
+                        <div>
+                            <div class="progress-header">
+                                <span class="progress-label">Progress</span>
+                                <span class="progress-amount">${campaign.current_amount} / ${campaign.goal_amount}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                            <span class="progress-percentage">${progress.toFixed(1)}% of goal</span>
+                        </div>
+
+                        <div class="campaign-actions">
+                            <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-primary btn-small">View Details</a>
+                            <a href="edit-campaign.html?id=${campaign.id}" class="btn btn-secondary btn-small">Edit</a>
+                            <button onclick="deleteCampaign(${campaign.id}, '${campaign.title}')" class="btn btn-secondary btn-small btn-delete">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            listDiv.innerHTML = campaignsHTML;
+        }
+
+        async function deleteCampaign(id, title) {
+            if (!confirm(`Are you sure you want to delete "${title}"? This action cannot be undone.`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/campaigns/${id}`, {
+                    method: 'DELETE',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Campaign deleted successfully');
+                    loadCampaigns(); // Reload the list
+                } else {
+                    alert(data.error || 'Failed to delete campaign');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the campaign');
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('campaigns-list').innerHTML = `
+                <div class="errors">
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Check auth on page load
+        checkAuth();
+    </script>
+</body>
+</html>

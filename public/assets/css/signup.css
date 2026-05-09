@@ -1,0 +1,37 @@
+/* Signup page specific styles */
+
+.signup-card {
+    max-width: 600px;
+    margin: 50px auto;
+}
+
+.signup-card h1 {
+    text-align: center;
+    color: #ff6b6b;
+    margin-bottom: 10px;
+}
+
+.signup-card > p {
+    text-align: center;
+    color: #7f8c8d;
+    margin-bottom: 30px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.signup-card .btn-primary {
+    width: 100%;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-center a {
+    color: #ff6b6b;
+    font-weight: 600;
+}

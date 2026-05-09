@@ -1,0 +1,28 @@
+/* Profile page specific styles */
+
+.profile-card {
+    margin-top: 40px;
+}
+
+.profile-card h1 {
+    color: #ff6b6b;
+    margin-bottom: 20px;
+}
+
+.profile-info dd#user-bio {
+    font-style: italic;
+    color: #7f8c8d;
+}
+
+.profile-actions {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.profile-features {
+    margin-top: 40px;
+}
+
+.hidden {
+    display: none;
+}

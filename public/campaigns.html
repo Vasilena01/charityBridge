@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Campaigns - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/campaigns.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- My Campaigns Section (only for organizers) -->
+        <div id="my-campaigns-section" class="hidden">
+            <!-- Will be populated by JavaScript for organizers -->
+        </div>
+
+        <!-- Browse All Campaigns -->
+        <div class="page-header">
+            <div>
+                <h1>Browse Campaigns</h1>
+                <p>Discover and support charitable causes</p>
+            </div>
+            <!-- Create Campaign button only for organizers -->
+            <div id="organizer-actions" class="hidden">
+                <a href="create-campaign.html" class="btn btn-primary">+ Create New Campaign</a>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="filter-type">Campaign Type:</label>
+                    <select id="filter-type" onchange="applyFilters()">
+                        <option value="">All Types</option>
+                        <option value="bazaar">Christmas Bazaar</option>
+                        <option value="online_game">Online Game</option>
+                        <option value="fundraiser">Fundraiser</option>
+                        <option value="volunteer">Volunteer Drive</option>
+                        <option value="goods">Goods Collection</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="filter-search">Search:</label>
+                    <input type="text" id="filter-search" placeholder="Search campaigns..." onkeyup="applyFilters()">
+                </div>
+
+                <div class="filter-group">
+                    <button onclick="clearFilters()" class="btn btn-secondary">Clear Filters</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Campaigns Grid -->
+        <div id="campaigns-container">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
+        <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/header-nav.js"></script>
+    <script>
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let currentUser = null;
+        let allCampaigns = [];
+        let myCampaigns = [];
+
+        // Initialize page
+        function init() {
+            checkAuth();
+            loadCampaigns();
+        }
+
+        function checkAuth() {
+            const token = localStorage.getItem('auth_token');
+            const userJson = localStorage.getItem('user');
+
+            if (token && userJson) {
+                currentUser = JSON.parse(userJson);
+
+                // Show organizer-specific sections
+                if (currentUser.role === 'organizer') {
+                    document.getElementById('organizer-actions').style.display = 'block';
+                    loadMyCampaigns();
+                }
+            }
+        }
+
+        async function loadMyCampaigns() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+
+                const response = await fetch('/api/campaigns/?my=true', {
+                    credentials: 'include',
+                    headers: {
+                        'X-User-Id': user.id
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    myCampaigns = data.campaigns;
+                    displayMyCampaignsSection(myCampaigns);
+                }
+            } catch (error) {
+                console.error('Error loading my campaigns:', error);
+            }
+        }
+
+        function displayMyCampaignsSection(campaigns) {
+            const section = document.getElementById('my-campaigns-section');
+
+            if (campaigns.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+
+            const campaignsList = campaigns.slice(0, 3).map(campaign => {
+                const progress = (campaign.current_amount / campaign.goal_amount) * 100;
+                return `
+                    <div class="campaign-card">
+                        <span class="campaign-type-badge">${formatCampaignType(campaign.campaign_type)}</span>
+                        <h3>${campaign.title}</h3>
+                        <div class="campaign-meta">
+                            <span>Deadline: ${new Date(campaign.deadline).toLocaleDateString()}</span>
+                            <span class="status-badge status-${campaign.status}">${campaign.status}</span>
+                        </div>
+                        <div class="progress-section">
+                            <div class="progress-text">
+                                <span>${progress.toFixed(0)}%</span>
+                                <span>${campaign.current_amount} / ${campaign.goal_amount}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                        </div>
+                        <div class="campaign-actions">
+                            <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-primary btn-small">View</a>
+                            <a href="my-campaigns.html" class="btn btn-secondary btn-small">Manage</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            section.innerHTML = `
+                <div class="section-header">
+                    <h2>My Campaigns</h2>
+                    <a href="my-campaigns.html" class="btn btn-secondary">View All →</a>
+                </div>
+                <div class="campaigns-grid">
+                    ${campaignsList}
+                </div>
+            `;
+        }
+
+        async function loadCampaigns() {
+            try {
+                const response = await fetch('/api/campaigns/', {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allCampaigns = data.campaigns;
+                    displayCampaigns(allCampaigns);
+                } else {
+                    showError(data.error || 'Failed to load campaigns');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('An error occurred while loading campaigns');
+            }
+        }
+
+        function displayCampaigns(campaigns) {
+            const container = document.getElementById('campaigns-container');
+
+            if (campaigns.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No campaigns found</h2>
+                        <p>There are no active campaigns at the moment.</p>
+                        ${currentUser && currentUser.role === 'organizer' ?
+                            '<a href="create-campaign.html" class="btn btn-primary">Create the First Campaign</a>' :
+                            '<p style="color: #95a5a6;">Check back soon for new campaigns!</p>'}
+                    </div>
+                `;
+                return;
+            }
+
+            const campaignsHTML = campaigns.map(campaign => {
+                const progress = (campaign.current_amount / campaign.goal_amount) * 100;
+                const deadline = new Date(campaign.deadline);
+                const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+                const isExpired = daysLeft < 0;
+
+                // Determine action buttons based on user role
+                let actionButtons = '';
+                if (!currentUser) {
+                    // Not logged in
+                    actionButtons = '<a href="signup.html" class="btn btn-primary btn-small">Sign Up to Support</a>';
+                } else if (currentUser.role === 'volunteer') {
+                    // Volunteers can donate and volunteer
+                    actionButtons = `
+                        <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-primary btn-small">Support Campaign</a>
+                    `;
+                } else if (currentUser.role === 'organizer') {
+                    // Organizers can only manage their own campaigns or view others
+                    if (campaign.organizer_id === currentUser.id) {
+                        actionButtons = `
+                            <a href="my-campaigns.html" class="btn btn-secondary btn-small">Manage</a>
+                            <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-primary btn-small">View Details</a>
+                        `;
+                    } else {
+                        // Organizers CANNOT donate to other campaigns - only view
+                        actionButtons = `
+                            <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-secondary btn-small">View Details</a>
+                        `;
+                    }
+                } else if (currentUser.role === 'company') {
+                    // Companies can support campaigns with large contributions
+                    actionButtons = `
+                        <a href="campaign-detail.html?id=${campaign.id}" class="btn btn-primary btn-small">Support Campaign</a>
+                    `;
+                }
+
+                return `
+                    <div class="campaign-card">
+                        <span class="campaign-type-badge">${formatCampaignType(campaign.campaign_type)}</span>
+                        <h3>${campaign.title}</h3>
+
+                        <div class="campaign-meta">
+                            <span>By: ${campaign.first_name} ${campaign.last_name}</span>
+                            <span>Deadline: ${deadline.toLocaleDateString()}</span>
+                            <span>${isExpired ? 'Expired' : daysLeft + ' days left'}</span>
+                        </div>
+
+                        <p class="campaign-description">
+                            ${campaign.description.substring(0, 120)}${campaign.description.length > 120 ? '...' : ''}
+                        </p>
+
+                        <div class="progress-section">
+                            <div class="progress-text">
+                                <span class="progress-funded">${progress.toFixed(0)}% funded</span>
+                                <span>${campaign.current_amount} / ${campaign.goal_amount}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${Math.min(progress, 100)}%"></div>
+                            </div>
+                        </div>
+
+                        <div class="campaign-actions">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = `<div class="campaigns-grid">${campaignsHTML}</div>`;
+        }
+
+        function formatCampaignType(type) {
+            const types = {
+                'bazaar': 'Christmas Bazaar',
+                'online_game': 'Online Game',
+                'fundraiser': 'Fundraiser',
+                'volunteer': 'Volunteer Drive',
+                'goods': 'Goods Collection',
+                'other': 'Other'
+            };
+            return types[type] || type;
+        }
+
+        function applyFilters() {
+            const typeFilter = document.getElementById('filter-type').value;
+            const searchFilter = document.getElementById('filter-search').value.toLowerCase();
+
+            let filtered = allCampaigns;
+
+            if (typeFilter) {
+                filtered = filtered.filter(c => c.campaign_type === typeFilter);
+            }
+
+            if (searchFilter) {
+                filtered = filtered.filter(c =>
+                    c.title.toLowerCase().includes(searchFilter) ||
+                    c.description.toLowerCase().includes(searchFilter)
+                );
+            }
+
+            displayCampaigns(filtered);
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-type').value = '';
+            document.getElementById('filter-search').value = '';
+            displayCampaigns(allCampaigns);
+        }
+
+        function showError(message) {
+            document.getElementById('campaigns-container').innerHTML = `
+                <div class="errors">
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // Initialize on page load
+        init();
+    </script>
+</body>
+</html>

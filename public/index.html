@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CharityBridge - Support Charitable Campaigns</title>
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/index.css">
 </head>
 <body>
     <header>
@@ -15,7 +16,7 @@
                     <div class="nav-left"></div>
                     <div class="nav-right">
                         <a href="login.html" class="nav-link">Log In</a>
-                        <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
+                        <a href="signup.html" class="btn btn-primary">Sign Up</a>
                     </div>
                 </div>
             </nav>
@@ -77,7 +78,7 @@
                 </div>
             </div>
 
-            <div id="hero-buttons" style="margin-top: 30px;">
+            <div id="hero-buttons">
                 <a href="signup.html" class="btn btn-primary">Get Started</a>
                 <a href="login.html" class="btn btn-secondary">Log In</a>
             </div>
@@ -100,9 +101,9 @@
             </div>
         </div>
 
-        <div class="card" style="text-align: center; margin-top: 40px;">
+        <div class="card how-it-works">
             <h2>How It Works</h2>
-            <p style="margin: 20px 0;">CharityBridge connects people who want to help with campaigns that need support. Whether you're organizing a Christmas bazaar, running an online fundraiser, or coordinating volunteer efforts, we make it easy to track contributions of all types.</p>
+            <p>CharityBridge connects people who want to help with campaigns that need support. Whether you're organizing a Christmas bazaar, running an online fundraiser, or coordinating volunteer efforts, we make it easy to track contributions of all types.</p>
             <div id="cta-button">
                 <a href="signup.html" class="btn btn-primary">Join Now</a>
             </div>
@@ -116,6 +117,7 @@
 
     <script src="assets/js/api.js"></script>
     <script src="assets/js/auth.js"></script>
+    <script src="assets/js/header-nav.js"></script>
     <script>
         // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
@@ -151,32 +153,6 @@
         function updatePageForAuth() {
             const token = localStorage.getItem('auth_token');
             const userJson = localStorage.getItem('user');
-
-            // Update header navigation
-            const headerNav = document.getElementById('header-nav');
-            if (headerNav) {
-                if (token && userJson) {
-                    const user = JSON.parse(userJson);
-                    headerNav.innerHTML = `
-                        <div class="nav-left">
-                            <a href="campaigns.html" class="nav-link">Browse Campaigns</a>
-                            <a href="profile.html" class="nav-link">My Profile</a>
-                        </div>
-                        <div class="nav-right">
-                            <span class="welcome-text">Welcome, ${user.first_name}!</span>
-                            <a href="#" onclick="handleLogout(); return false;" class="nav-link">Logout</a>
-                        </div>
-                    `;
-                } else {
-                    headerNav.innerHTML = `
-                        <div class="nav-left"></div>
-                        <div class="nav-right">
-                            <a href="login.html" class="nav-link">Log In</a>
-                            <a href="signup.html" class="btn btn-primary" style="padding: 8px 16px;">Sign Up</a>
-                        </div>
-                    `;
-                }
-            }
 
             // Update hero buttons based on auth
             const heroButtons = document.getElementById('hero-buttons');

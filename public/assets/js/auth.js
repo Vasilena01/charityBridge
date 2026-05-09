@@ -57,7 +57,7 @@ async function handleLogin(event) {
     if (response.success) {
         showSuccess('Login successful! Redirecting...');
 
-        // Store user info and token in localStorage (simple approach for uni project)
+        // Store user info and token in localStorage
         localStorage.setItem('auth_token', response.token);
         localStorage.setItem('user', JSON.stringify(response.user));
 
