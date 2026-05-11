@@ -33,13 +33,13 @@
     <script src="assets/js/api.js"></script>
     <script src="assets/js/header-nav.js"></script>
     <script>
-        // Set current year
+        // Set current year 
         document.getElementById('year').textContent = new Date().getFullYear();
 
         let currentUser = null;
         let campaign = null;
 
-        // Get campaign ID from URL
+        // Get campaign ID from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const campaignId = urlParams.get('id');
 
