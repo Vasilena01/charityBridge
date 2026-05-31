@@ -74,6 +74,13 @@
             </div>
         </div>
 
+        <div class="card offers-card" id="invitations-card">
+            <h2>My invitations</h2>
+            <div id="invitations-container">
+                <div class="purchases-empty">Loading…</div>
+            </div>
+        </div>
+
         <div class="features profile-features">
             <div class="feature-card">
                 <h3>Browse Campaigns</h3>
@@ -140,6 +147,78 @@
                     document.getElementById('contributions-card').classList.remove('hidden');
                     loadContributions(user);
                 }
+
+                loadInvitations(user);
+            }
+        }
+
+        async function loadInvitations(user) {
+            const container = document.getElementById('invitations-container');
+            try {
+                const resp = await fetch('/api/campaign-invites?my=true', {
+                    headers: { 'X-User-Id': user.id }, credentials: 'include'
+                });
+                const data = await resp.json();
+                if (!data.success) {
+                    container.innerHTML = `<div class="purchases-empty">${escapeHtml(data.error || 'Could not load invitations.')}</div>`;
+                    return;
+                }
+                if (!Array.isArray(data.invites) || data.invites.length === 0) {
+                    container.innerHTML = '<div class="purchases-empty">You have no invitations.</div>';
+                    return;
+                }
+                container.innerHTML = `
+                    <table class="purchases-table">
+                        <thead>
+                            <tr>
+                                <th>Campaign</th>
+                                <th>Invited by</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.invites.map(inv => `
+                                <tr>
+                                    <td><a href="campaign-detail.html?id=${inv.campaign_id}">${escapeHtml(inv.campaign_title)}</a></td>
+                                    <td>${escapeHtml(inv.inviter_first_name)} ${escapeHtml(inv.inviter_last_name)}</td>
+                                    <td>${inv.message ? escapeHtml(inv.message) : '<span style="color:#bbb;">—</span>'}</td>
+                                    <td><span class="offer-status-badge offer-status-${escapeHtml(inv.status)}">${escapeHtml(inv.status)}</span></td>
+                                    <td>
+                                        ${inv.status === 'pending' ? `
+                                            <button class="offer-btn offer-btn-accept" onclick="decideInvite(${inv.id}, 'accept')">Accept</button>
+                                            <button class="offer-btn offer-btn-reject" onclick="decideInvite(${inv.id}, 'decline')">Decline</button>
+                                        ` : ''}
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<div class="purchases-empty">Could not load invitations.</div>';
+            }
+        }
+
+        async function decideInvite(id, action) {
+            const verb = action === 'accept' ? 'accept' : 'decline';
+            if (!confirm(`Are you sure you want to ${verb} this invitation?`)) return;
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                const resp = await fetch(`/api/campaign-invites?id=${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-User-Id': user.id },
+                    credentials: 'include',
+                    body: JSON.stringify({ action })
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Could not update invite.'); return; }
+                await loadInvitations(user);
+            } catch (e) {
+                console.error(e);
+                alert('Network error while updating invite.');
             }
         }
 
