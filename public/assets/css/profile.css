@@ -26,3 +26,121 @@
 .hidden {
     display: none;
 }
+
+.balance-card {
+    margin-top: 20px;
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #fff9f5 0%, #ffe7d6 100%);
+    border: 2px solid #ffd7ba;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.balance-card .balance-label {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.balance-card .balance-amount {
+    color: #ff6b6b;
+    font-size: 28px;
+    font-weight: 800;
+}
+
+.purchases-card {
+    margin-top: 30px;
+}
+
+.purchases-card h2 {
+    color: #ff6b6b;
+    margin-bottom: 12px;
+    font-size: 22px;
+}
+
+.purchases-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.purchases-table th,
+.purchases-table td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.purchases-table th {
+    color: #7f8c8d;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.purchases-table td.num,
+.purchases-table th.num {
+    text-align: right;
+}
+
+.purchases-empty {
+    padding: 24px;
+    background: #f8f9fa;
+    border: 1px dashed #d0d7de;
+    border-radius: 8px;
+    color: #95a5a6;
+    text-align: center;
+    font-style: italic;
+}
+
+.offers-card {
+    margin-top: 30px;
+}
+
+.offers-card h2 {
+    color: #ff6b6b;
+    margin-bottom: 12px;
+    font-size: 22px;
+}
+
+.offer-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.offer-status-pending   { background: #fff3cd; color: #856404; }
+.offer-status-accepted  { background: #d4edda; color: #155724; }
+.offer-status-completed { background: #d4edda; color: #155724; }
+.offer-status-fulfilled { background: #d4edda; color: #155724; }
+.offer-status-rejected  { background: #f8d7da; color: #721c24; }
+.offer-status-cancelled { background: #ecf0f1; color: #7f8c8d; }
+
+.offer-row-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-link {
+    background: transparent;
+    color: #ff6b6b;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0;
+    text-decoration: underline;
+}
+
+.offer-note {
+    color: #7f8c8d;
+    font-size: 12px;
+    font-style: italic;
+    margin-top: 4px;
+}
