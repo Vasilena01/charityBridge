@@ -12,9 +12,7 @@
         <div class="header-content">
             <nav>
                 <a href="index.html" class="logo">CharityBridge</a>
-                <div id="header-nav" class="header-nav-wrapper">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="header-nav" class="header-nav-wrapper"></div>
             </nav>
         </div>
     </header>
@@ -63,8 +61,33 @@
                         <input type="date" id="deadline" name="deadline" required>
                     </div>
 
-                    <div class="form-group">
-                        <!-- Placeholder for future fields if needed -->
+                    <div class="form-group"></div>
+                </div>
+
+                <div class="items-section" id="items-section">
+                    <h2>Items &amp; Services</h2>
+                    <p class="items-help">
+                        Goods or services this campaign offers. Each item has a
+                        <strong>production cost</strong> (what it costs to make/provide) and a
+                        <strong>donation amount</strong> (what credits the campaign goal when purchased).
+                        Use quantity <code>-1</code> for unlimited (typical for services).
+                    </p>
+
+                    <div class="items-list" id="items-list">
+                        <div class="items-empty" id="items-empty">Loading items…</div>
+                    </div>
+
+                    <button type="button" class="add-item-btn" onclick="addItemRow()">+ Add Item</button>
+                </div>
+
+                <div class="offers-section" id="offers-section">
+                    <h2>Production Offers</h2>
+                    <p class="offers-help">
+                        Volunteers and companies can offer to produce goods/services for your campaign.
+                        Accepting an offer adds it to the campaign catalog at the proposed cost + donation.
+                    </p>
+                    <div id="offers-list">
+                        <div class="items-empty">Loading offers…</div>
                     </div>
                 </div>
 
@@ -92,42 +115,36 @@
     <script src="assets/js/api.js"></script>
     <script src="assets/js/header-nav.js"></script>
     <script>
-        // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
 
         let campaignId = null;
         let currentCampaign = null;
 
-        // Get campaign ID from URL
         const urlParams = new URLSearchParams(window.location.search);
         campaignId = urlParams.get('id');
 
-        // Set minimum deadline to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('deadline').min = tomorrow.toISOString().split('T')[0];
 
-        // Toggle goal amount visibility based on campaign type
         function toggleGoalAmount() {
             const campaignType = document.getElementById('campaign_type').value;
             const goalAmountGroup = document.getElementById('goal-amount-group');
             const goalAmountInput = document.getElementById('goal_amount');
 
-            // Hide goal amount for volunteer drives and goods collection
             if (campaignType === 'volunteer' || campaignType === 'goods') {
                 goalAmountGroup.style.display = 'none';
                 goalAmountInput.removeAttribute('required');
-                goalAmountInput.value = '1'; // Set default value for backend
+                goalAmountInput.value = '1';
             } else {
                 goalAmountGroup.style.display = 'block';
                 goalAmountInput.setAttribute('required', 'required');
                 if (goalAmountInput.value === '1') {
-                    goalAmountInput.value = ''; // Clear default value
+                    goalAmountInput.value = '';
                 }
             }
         }
 
-        // Check authentication and role
         function checkAuth() {
             const token = localStorage.getItem('auth_token');
             const userJson = localStorage.getItem('user');
@@ -169,30 +186,28 @@
                 if (data.success && data.campaign) {
                     currentCampaign = data.campaign;
 
-                    // Check ownership
                     if (currentCampaign.organizer_id !== user.id) {
                         alert('You can only edit your own campaigns');
                         window.location.href = 'my-campaigns.html';
                         return;
                     }
 
-                    // Populate form
                     document.getElementById('title').value = currentCampaign.title;
                     document.getElementById('description').value = currentCampaign.description;
                     document.getElementById('campaign_type').value = currentCampaign.campaign_type;
                     document.getElementById('goal_amount').value = currentCampaign.goal_amount;
 
-                    // Format date for input (YYYY-MM-DD)
                     const deadlineDate = new Date(currentCampaign.deadline);
                     document.getElementById('deadline').value = deadlineDate.toISOString().split('T')[0];
 
-                    // Show publish button if campaign is draft
                     if (currentCampaign.status === 'draft') {
                         document.getElementById('publish-btn').style.display = 'block';
                     }
 
-                    // Initialize goal amount visibility
                     toggleGoalAmount();
+
+                    await loadItems();
+                    await loadOffers();
                 } else {
                     showMessage('error', data.error || 'Campaign not found');
                     setTimeout(() => {
@@ -205,27 +220,284 @@
             }
         }
 
+        let itemRowCounter = 0;
+        const deletedItemIds = [];
+
+        async function loadItems() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const resp = await fetch(`/api/campaigns/items?campaign_id=${campaignId}`, {
+                    credentials: 'include',
+                    headers: { 'X-User-Id': user.id }
+                });
+                const data = await resp.json();
+
+                const empty = document.getElementById('items-empty');
+                if (empty) empty.remove();
+
+                if (data.success && Array.isArray(data.items)) {
+                    if (data.items.length === 0) {
+                        showEmptyItems();
+                    } else {
+                        data.items.forEach(item => addItemRow(item, item.id));
+                    }
+                } else {
+                    showEmptyItems();
+                }
+            } catch (e) {
+                console.error('Failed to load items', e);
+                showEmptyItems();
+            }
+        }
+
+        function showEmptyItems() {
+            const list = document.getElementById('items-list');
+            if (list.querySelectorAll('.item-row').length > 0) return;
+            const empty = document.createElement('div');
+            empty.className = 'items-empty';
+            empty.id = 'items-empty';
+            empty.textContent = 'No items yet — click "+ Add Item" to offer goods or services.';
+            list.appendChild(empty);
+        }
+
+        function addItemRow(values, existingId) {
+            values = values || {};
+            const list = document.getElementById('items-list');
+            const empty = document.getElementById('items-empty');
+            if (empty) empty.remove();
+
+            const id = ++itemRowCounter;
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.dataset.rowId = id;
+            if (existingId) row.dataset.existingId = existingId;
+            row.innerHTML = `
+                <div class="item-field item-field-name">
+                    <label>Name</label>
+                    <input type="text" data-field="name" maxlength="255" placeholder="e.g. Hand-knit scarf" required>
+                </div>
+                <div class="item-field">
+                    <label>Type</label>
+                    <select data-field="item_type">
+                        <option value="good">Good</option>
+                        <option value="service">Service</option>
+                    </select>
+                </div>
+                <div class="item-field">
+                    <label>Cost</label>
+                    <input type="number" data-field="production_cost" min="0" step="0.01" value="0.00" required>
+                </div>
+                <div class="item-field">
+                    <label>Donation</label>
+                    <input type="number" data-field="donation_amount" min="0" step="0.01" value="0.00" required>
+                </div>
+                <div class="item-field">
+                    <label>Qty</label>
+                    <input type="number" data-field="quantity_available" min="-1" step="1" value="1" title="-1 for unlimited">
+                </div>
+                <button type="button" class="item-remove-btn" title="Remove" onclick="removeItemRow(${id})">×</button>
+                <div class="item-total" style="grid-column: 1 / -1;">Total price: <span data-field="total">0.00</span></div>
+            `;
+            list.appendChild(row);
+
+            const fields = row.querySelectorAll('[data-field]');
+            fields.forEach(f => {
+                const key = f.dataset.field;
+                if (values[key] !== undefined && values[key] !== null) f.value = values[key];
+                f.addEventListener('input', () => updateItemTotal(row));
+            });
+            updateItemTotal(row);
+        }
+
+        function removeItemRow(id) {
+            const row = document.querySelector(`.item-row[data-row-id="${id}"]`);
+            if (!row) return;
+            if (row.dataset.existingId) {
+                deletedItemIds.push(parseInt(row.dataset.existingId, 10));
+            }
+            row.remove();
+            const list = document.getElementById('items-list');
+            if (list.querySelectorAll('.item-row').length === 0) showEmptyItems();
+        }
+
+        function updateItemTotal(row) {
+            const cost = parseFloat(row.querySelector('[data-field="production_cost"]').value) || 0;
+            const donation = parseFloat(row.querySelector('[data-field="donation_amount"]').value) || 0;
+            row.querySelector('[data-field="total"]').textContent = (cost + donation).toFixed(2);
+        }
+
+        function collectItemRows() {
+            const rows = document.querySelectorAll('.item-row');
+            const result = [];
+            for (const row of rows) {
+                const get = (f) => row.querySelector(`[data-field="${f}"]`).value;
+                const name = get('name').trim();
+                const cost = parseFloat(get('production_cost'));
+                const donation = parseFloat(get('donation_amount'));
+                const qty = parseInt(get('quantity_available'), 10);
+
+                if (!name) return { error: 'Every item needs a name.' };
+                if (!(cost >= 0) || !(donation >= 0) || (cost + donation <= 0)) {
+                    return { error: `Item "${name}": cost + donation must be greater than zero.` };
+                }
+                if (isNaN(qty) || qty < -1) {
+                    return { error: `Item "${name}": quantity must be -1 (unlimited) or a non-negative integer.` };
+                }
+
+                result.push({
+                    existingId: row.dataset.existingId ? parseInt(row.dataset.existingId, 10) : null,
+                    payload: {
+                        name,
+                        item_type: get('item_type'),
+                        production_cost: cost,
+                        donation_amount: donation,
+                        quantity_available: qty,
+                    }
+                });
+            }
+            return { rows: result };
+        }
+
+        async function loadOffers() {
+            const list = document.getElementById('offers-list');
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const resp = await fetch(`/api/production-offers?campaign_id=${campaignId}`, {
+                    credentials: 'include',
+                    headers: { 'X-User-Id': user.id }
+                });
+                const data = await resp.json();
+
+                if (!data.success || !Array.isArray(data.offers) || data.offers.length === 0) {
+                    list.innerHTML = '<div class="items-empty">No production offers yet.</div>';
+                    return;
+                }
+                renderOffers(data.offers, list, user);
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = '<div class="items-empty">Could not load offers.</div>';
+            }
+        }
+
+        function renderOffers(offers, list, user) {
+            list.innerHTML = '';
+            for (const o of offers) {
+                const totalPerItem = (parseFloat(o.proposed_production_cost) + parseFloat(o.proposed_donation_amount));
+                const totalAll = totalPerItem * o.quantity_offered;
+
+                const row = document.createElement('div');
+                row.className = 'offer-row' + (o.status === 'pending' ? ' is-pending' : '');
+
+                let actions;
+                if (o.status === 'pending') {
+                    actions = `
+                        <button class="offer-accept-btn" data-action="accept" data-offer-id="${o.id}">Accept</button>
+                        <button class="offer-reject-btn" data-action="reject" data-offer-id="${o.id}">Reject</button>
+                    `;
+                } else {
+                    const decided = o.decided_at ? new Date(o.decided_at).toLocaleDateString() : '';
+                    actions = `<div class="offer-status-line">${escapeHtml(o.status)}${decided ? ' on ' + decided : ''}</div>`;
+                }
+
+                row.innerHTML = `
+                    <div>
+                        <div class="offer-meta">
+                            From ${escapeHtml(o.first_name)} ${escapeHtml(o.last_name)}
+                            (${escapeHtml(o.producer_role)}) ·
+                            ${new Date(o.created_at).toLocaleDateString()}
+                        </div>
+                        <div class="offer-name">${escapeHtml(o.name)}
+                            <span style="font-weight: 400; color:#7f8c8d; font-size:13px;">— ${escapeHtml(o.item_type)}</span>
+                        </div>
+                        ${o.description ? `<div class="offer-desc">${escapeHtml(o.description)}</div>` : ''}
+                        <div class="offer-pricing">
+                            ${o.quantity_offered} × (cost ${parseFloat(o.proposed_production_cost).toFixed(2)} +
+                            donation ${parseFloat(o.proposed_donation_amount).toFixed(2)})
+                            = <strong>${totalAll.toFixed(2)}</strong>
+                            <span style="color:#7f8c8d;"> (${parseFloat(o.proposed_donation_amount * o.quantity_offered).toFixed(2)} would reach campaign goal)</span>
+                        </div>
+                        ${o.organizer_note ? `<div class="offer-note">Your note: "${escapeHtml(o.organizer_note)}"</div>` : ''}
+                    </div>
+                    <div class="offer-actions">${actions}</div>
+                `;
+
+                list.appendChild(row);
+            }
+
+            list.querySelectorAll('[data-action]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const offerId = btn.dataset.offerId;
+                    const action = btn.dataset.action;
+                    let body = { action };
+
+                    if (action === 'reject') {
+                        const note = prompt('Optional note for the producer (e.g. why this offer was declined):', '');
+                        if (note === null) return;
+                        body.organizer_note = note.trim();
+                    }
+
+                    btn.disabled = true;
+                    const original = btn.textContent;
+                    btn.textContent = '...';
+                    try {
+                        const resp = await fetch(`/api/production-offers?id=${offerId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'X-User-Id': user.id },
+                            credentials: 'include',
+                            body: JSON.stringify(body)
+                        });
+                        const data = await resp.json();
+                        if (data.success) {
+                            await loadOffers();
+                            if (action === 'accept') {
+                                deletedItemIds.length = 0;
+                                document.getElementById('items-list').innerHTML = '<div class="items-empty">Loading items…</div>';
+                                await loadItems();
+                            }
+                        } else {
+                            alert(data.error || 'Failed');
+                            btn.disabled = false;
+                            btn.textContent = original;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Network error');
+                        btn.disabled = false;
+                        btn.textContent = original;
+                    }
+                });
+            });
+        }
+
+        function escapeHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
         async function handleEditCampaign(event) {
             event.preventDefault();
 
             const form = event.target;
             const submitButton = event.submitter;
-            const action = submitButton.value; // 'save' or 'publish'
+            const action = submitButton.value;
 
             const campaignType = form.campaign_type.value;
             let goalAmount = 1;
 
-            // Only include goal amount for monetary campaigns
             if (campaignType !== 'volunteer' && campaignType !== 'goods') {
                 const goalAmountValue = form.goal_amount.value.trim();
-
-                // Validate that goal amount is a positive number
                 if (!goalAmountValue || isNaN(goalAmountValue) || parseFloat(goalAmountValue) <= 0) {
                     showMessage('error', 'Please enter a valid goal amount (positive number)');
                     return;
                 }
-
                 goalAmount = parseFloat(goalAmountValue);
+            }
+
+            const collected = collectItemRows();
+            if (collected.error) {
+                showMessage('error', collected.error);
+                return;
             }
 
             const formData = {
@@ -233,11 +505,9 @@
                 description: form.description.value.trim(),
                 campaign_type: campaignType,
                 goal_amount: goalAmount,
-                deadline: form.deadline.value + 'T23:59:59',
-                visibility: 'public'
+                deadline: form.deadline.value + 'T23:59:59'
             };
 
-            // If action is publish, update status
             if (action === 'publish') {
                 formData.status = 'published';
             }
@@ -247,29 +517,65 @@
                 submitButton.textContent = action === 'publish' ? 'Publishing...' : 'Saving...';
 
                 const user = JSON.parse(localStorage.getItem('user'));
+                const authHeaders = { 'Content-Type': 'application/json', 'X-User-Id': user.id };
 
                 const response = await fetch(`/api/campaigns/${campaignId}`, {
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-User-Id': user.id
-                    },
+                    headers: authHeaders,
                     credentials: 'include',
                     body: JSON.stringify(formData)
                 });
 
                 const data = await response.json();
-
-                if (data.success) {
-                    const message = action === 'publish' ? 'Campaign published successfully!' : 'Campaign updated successfully!';
-                    showMessage('success', message);
-                    setTimeout(() => {
-                        window.location.href = 'my-campaigns.html';
-                    }, 1500);
-                } else {
+                if (!data.success) {
                     showMessage('error', data.error || 'Failed to update campaign');
                     submitButton.disabled = false;
                     submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save Changes';
+                    return;
+                }
+
+                let itemFailures = 0;
+
+                for (const id of deletedItemIds) {
+                    const r = await fetch(`/api/campaigns/items?id=${id}`, {
+                        method: 'DELETE',
+                        headers: authHeaders,
+                        credentials: 'include'
+                    });
+                    const d = await r.json();
+                    if (!d.success) itemFailures++;
+                }
+                deletedItemIds.length = 0;
+
+                for (const row of collected.rows) {
+                    let r, d;
+                    if (row.existingId) {
+                        r = await fetch(`/api/campaigns/items?id=${row.existingId}`, {
+                            method: 'PUT',
+                            headers: authHeaders,
+                            credentials: 'include',
+                            body: JSON.stringify(row.payload)
+                        });
+                    } else {
+                        r = await fetch('/api/campaigns/items', {
+                            method: 'POST',
+                            headers: authHeaders,
+                            credentials: 'include',
+                            body: JSON.stringify({ ...row.payload, campaign_id: campaignId })
+                        });
+                    }
+                    d = await r.json();
+                    if (!d.success) itemFailures++;
+                }
+
+                if (itemFailures > 0) {
+                    showMessage('error', `Campaign saved, but ${itemFailures} item change(s) failed.`);
+                    submitButton.disabled = false;
+                    submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save Changes';
+                } else {
+                    const message = action === 'publish' ? 'Campaign published successfully!' : 'Campaign updated successfully!';
+                    showMessage('success', message);
+                    setTimeout(() => { window.location.href = 'my-campaigns.html'; }, 1500);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -286,7 +592,6 @@
             messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Check auth on page load
         checkAuth();
     </script>
 </body>

@@ -12,9 +12,7 @@
         <div class="header-content">
             <nav>
                 <a href="index.html" class="logo">CharityBridge</a>
-                <div id="header-nav" class="header-nav-wrapper">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="header-nav" class="header-nav-wrapper"></div>
             </nav>
         </div>
     </header>
@@ -63,9 +61,23 @@
                         <input type="date" id="deadline" name="deadline" required>
                     </div>
 
-                    <div class="form-group">
-                        <!-- Placeholder for future fields if needed -->
+                    <div class="form-group"></div>
+                </div>
+
+                <div class="items-section" id="items-section">
+                    <h2>Items &amp; Services (optional)</h2>
+                    <p class="items-help">
+                        List goods or services your campaign offers. Each item has a
+                        <strong>production cost</strong> (what it costs to make/provide) and a
+                        <strong>donation amount</strong> (what credits the campaign goal when purchased).
+                        Buyers pay the total of both.
+                    </p>
+
+                    <div class="items-list" id="items-list">
+                        <div class="items-empty" id="items-empty">No items yet — click "+ Add Item" to offer goods or services.</div>
                     </div>
+
+                    <button type="button" class="add-item-btn" onclick="addItemRow()">+ Add Item</button>
                 </div>
 
                 <div class="form-actions">
@@ -92,35 +104,30 @@
     <script src="assets/js/api.js"></script>
     <script src="assets/js/header-nav.js"></script>
     <script>
-        // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Set minimum deadline to tomorrow
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         document.getElementById('deadline').min = tomorrow.toISOString().split('T')[0];
 
-        // Toggle goal amount visibility based on campaign type
         function toggleGoalAmount() {
             const campaignType = document.getElementById('campaign_type').value;
             const goalAmountGroup = document.getElementById('goal-amount-group');
             const goalAmountInput = document.getElementById('goal_amount');
 
-            // Hide goal amount for volunteer drives and goods collection
             if (campaignType === 'volunteer' || campaignType === 'goods') {
                 goalAmountGroup.style.display = 'none';
                 goalAmountInput.removeAttribute('required');
-                goalAmountInput.value = '1'; // Set default value for backend
+                goalAmountInput.value = '1';
             } else {
                 goalAmountGroup.style.display = 'block';
                 goalAmountInput.setAttribute('required', 'required');
                 if (goalAmountInput.value === '1') {
-                    goalAmountInput.value = ''; // Clear default value
+                    goalAmountInput.value = '';
                 }
             }
         }
 
-        // Check authentication and role
         function checkAuth() {
             const token = localStorage.getItem('auth_token');
             const userJson = localStorage.getItem('user');
@@ -138,28 +145,132 @@
             }
         }
 
+        let itemRowCounter = 0;
+
+        function addItemRow(values) {
+            values = values || {};
+            const list = document.getElementById('items-list');
+            const empty = document.getElementById('items-empty');
+            if (empty) empty.remove();
+
+            const id = ++itemRowCounter;
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.dataset.rowId = id;
+            row.innerHTML = `
+                <div class="item-field item-field-name">
+                    <label>Name</label>
+                    <input type="text" data-field="name" maxlength="255" placeholder="e.g. Hand-knit scarf" required>
+                </div>
+                <div class="item-field">
+                    <label>Type</label>
+                    <select data-field="item_type">
+                        <option value="good">Good</option>
+                        <option value="service">Service</option>
+                    </select>
+                </div>
+                <div class="item-field">
+                    <label>Cost</label>
+                    <input type="number" data-field="production_cost" min="0" step="0.01" value="0.00" required>
+                </div>
+                <div class="item-field">
+                    <label>Donation</label>
+                    <input type="number" data-field="donation_amount" min="0" step="0.01" value="0.00" required>
+                </div>
+                <div class="item-field">
+                    <label>Qty</label>
+                    <input type="number" data-field="quantity_available" min="-1" step="1" value="1" title="-1 for unlimited">
+                </div>
+                <button type="button" class="item-remove-btn" title="Remove" onclick="removeItemRow(${id})">×</button>
+                <div class="item-total" style="grid-column: 1 / -1;">Total price: <span data-field="total">0.00</span></div>
+            `;
+            list.appendChild(row);
+
+            const fields = row.querySelectorAll('[data-field]');
+            fields.forEach(f => {
+                if (values[f.dataset.field] !== undefined) f.value = values[f.dataset.field];
+                f.addEventListener('input', () => updateItemTotal(row));
+            });
+            updateItemTotal(row);
+        }
+
+        function removeItemRow(id) {
+            const row = document.querySelector(`.item-row[data-row-id="${id}"]`);
+            if (row) row.remove();
+
+            const list = document.getElementById('items-list');
+            if (list.querySelectorAll('.item-row').length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'items-empty';
+                empty.id = 'items-empty';
+                empty.textContent = 'No items yet — click "+ Add Item" to offer goods or services.';
+                list.appendChild(empty);
+            }
+        }
+
+        function updateItemTotal(row) {
+            const cost = parseFloat(row.querySelector('[data-field="production_cost"]').value) || 0;
+            const donation = parseFloat(row.querySelector('[data-field="donation_amount"]').value) || 0;
+            row.querySelector('[data-field="total"]').textContent = (cost + donation).toFixed(2);
+        }
+
+        function collectItems() {
+            const rows = document.querySelectorAll('.item-row');
+            const items = [];
+            for (const row of rows) {
+                const get = (f) => row.querySelector(`[data-field="${f}"]`).value;
+                const name = get('name').trim();
+                const cost = parseFloat(get('production_cost'));
+                const donation = parseFloat(get('donation_amount'));
+                const qty = parseInt(get('quantity_available'), 10);
+
+                if (!name) {
+                    return { error: 'Every item needs a name.' };
+                }
+                if (!(cost >= 0) || !(donation >= 0) || (cost + donation <= 0)) {
+                    return { error: `Item "${name}": cost + donation must be greater than zero.` };
+                }
+                if (isNaN(qty) || qty < -1) {
+                    return { error: `Item "${name}": quantity must be -1 (unlimited) or a non-negative integer.` };
+                }
+
+                items.push({
+                    name,
+                    item_type: get('item_type'),
+                    production_cost: cost,
+                    donation_amount: donation,
+                    quantity_available: qty,
+                    description: '',
+                });
+            }
+            return { items };
+        }
+
         async function handleCreateCampaign(event) {
             event.preventDefault();
 
             const form = event.target;
             const submitButton = event.submitter;
-            const action = submitButton.value; // 'draft' or 'publish'
+            const action = submitButton.value;
 
             const campaignType = form.campaign_type.value;
             let goalAmount = 1;
 
-            // Only include goal amount for monetary campaigns
             if (campaignType !== 'volunteer' && campaignType !== 'goods') {
                 const goalAmountValue = form.goal_amount.value.trim();
-
-                // Validate that goal amount is a positive number
                 if (!goalAmountValue || isNaN(goalAmountValue) || parseFloat(goalAmountValue) <= 0) {
                     showMessage('error', 'Please enter a valid goal amount (positive number)');
                     return;
                 }
-
                 goalAmount = parseFloat(goalAmountValue);
             }
+
+            const itemsResult = collectItems();
+            if (itemsResult.error) {
+                showMessage('error', itemsResult.error);
+                return;
+            }
+            const items = itemsResult.items;
 
             const formData = {
                 title: form.title.value.trim(),
@@ -167,7 +278,7 @@
                 campaign_type: campaignType,
                 goal_amount: goalAmount,
                 deadline: form.deadline.value + 'T23:59:59',
-                visibility: 'public', // All campaigns are public
+                visibility: 'public',
                 publish: action === 'publish'
             };
 
@@ -189,15 +300,40 @@
 
                 const data = await response.json();
 
-                if (data.success) {
-                    showMessage('success', data.message || 'Campaign created successfully!');
-                    setTimeout(() => {
-                        window.location.href = 'my-campaigns.html';
-                    }, 1500);
-                } else {
+                if (!data.success) {
                     showMessage('error', data.error || 'Failed to create campaign');
                     submitButton.disabled = false;
                     submitButton.textContent = action === 'publish' ? 'Publish Campaign' : 'Save as Draft';
+                    return;
+                }
+
+                const campaignId = data.campaign_id;
+                let itemFailures = 0;
+
+                if (items.length > 0) {
+                    submitButton.textContent = `Adding items (0/${items.length})...`;
+                    for (let i = 0; i < items.length; i++) {
+                        const itemResp = await fetch('/api/campaigns/items', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-User-Id': user.id
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({ ...items[i], campaign_id: campaignId })
+                        });
+                        const itemData = await itemResp.json();
+                        if (!itemData.success) itemFailures++;
+                        submitButton.textContent = `Adding items (${i + 1}/${items.length})...`;
+                    }
+                }
+
+                if (itemFailures > 0) {
+                    showMessage('error', `Campaign created, but ${itemFailures} item(s) failed to save. Edit the campaign to retry.`);
+                    setTimeout(() => { window.location.href = `edit-campaign.html?id=${campaignId}`; }, 2000);
+                } else {
+                    showMessage('success', data.message || 'Campaign created successfully!');
+                    setTimeout(() => { window.location.href = 'my-campaigns.html'; }, 1200);
                 }
             } catch (error) {
                 console.error('Error:', error);
@@ -214,10 +350,7 @@
             messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Check auth on page load
         checkAuth();
-
-        // Initialize goal amount visibility
         toggleGoalAmount();
     </script>
 </body>

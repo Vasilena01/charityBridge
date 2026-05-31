@@ -12,17 +12,13 @@
         <div class="header-content">
             <nav>
                 <a href="index.html" class="logo">CharityBridge</a>
-                <div id="header-nav" class="header-nav-wrapper">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="header-nav" class="header-nav-wrapper"></div>
             </nav>
         </div>
     </header>
 
     <div class="container">
-        <div id="campaign-detail-container">
-            <!-- Will be populated by JavaScript -->
-        </div>
+        <div id="campaign-detail-container"></div>
     </div>
 
     <footer>
@@ -33,13 +29,11 @@
     <script src="assets/js/api.js"></script>
     <script src="assets/js/header-nav.js"></script>
     <script>
-        // Set current year 
         document.getElementById('year').textContent = new Date().getFullYear();
 
         let currentUser = null;
         let campaign = null;
 
-        // Get campaign ID from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const campaignId = urlParams.get('id');
 
@@ -73,6 +67,8 @@
                 if (data.success && data.campaign) {
                     campaign = data.campaign;
                     displayCampaign(campaign);
+                    loadItems();
+                    renderOfferProduceButton();
                 } else {
                     showError(data.error || 'Campaign not found');
                 }
@@ -80,6 +76,388 @@
                 console.error('Error:', error);
                 showError('An error occurred while loading the campaign');
             }
+        }
+
+        async function loadItems() {
+            const target = document.getElementById('items-catalog-container');
+            if (!target) return;
+            try {
+                const opts = { credentials: 'include' };
+                if (currentUser) opts.headers = { 'X-User-Id': currentUser.id };
+                const resp = await fetch(`/api/campaigns/items?campaign_id=${campaignId}`, opts);
+                const data = await resp.json();
+                if (!data.success || !Array.isArray(data.items) || data.items.length === 0) {
+                    target.innerHTML = '<div class="items-empty-state">This campaign has no items yet.</div>';
+                    return;
+                }
+                renderItems(data.items, target);
+            } catch (e) {
+                console.error('Failed to load items', e);
+                target.innerHTML = '<div class="items-empty-state">Could not load items.</div>';
+            }
+        }
+
+        function renderItems(items, target) {
+            target.innerHTML = '';
+            const grid = document.createElement('div');
+            grid.className = 'items-catalog';
+
+            for (const item of items) {
+                const cost = parseFloat(item.production_cost) || 0;
+                const donation = parseFloat(item.donation_amount) || 0;
+                const total = cost + donation;
+                const qty = parseInt(item.quantity_available, 10);
+                const sold = parseInt(item.quantity_sold || 0, 10);
+
+                let availability;
+                if (qty === -1) availability = 'Unlimited availability';
+                else availability = `${Math.max(qty - sold, 0)} of ${qty} available`;
+
+                const soldOut = qty !== -1 && sold >= qty;
+                const isOwner = currentUser && campaign && currentUser.id === campaign.organizer_id;
+                const canBuy = currentUser
+                    && (currentUser.role === 'volunteer' || currentUser.role === 'company')
+                    && !soldOut
+                    && !isOwner;
+
+                let buttonLabel = 'Purchase';
+                let buttonTitle = 'Purchase this item';
+                if (soldOut) { buttonLabel = 'Sold out'; buttonTitle = ''; }
+                else if (!currentUser) { buttonLabel = 'Sign in to purchase'; buttonTitle = 'Sign in to purchase'; }
+                else if (isOwner) { buttonLabel = 'Your campaign'; buttonTitle = 'Organizers cannot buy from their own campaign'; }
+                else if (currentUser.role === 'organizer') { buttonLabel = 'Organizers cannot purchase'; buttonTitle = ''; }
+
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.dataset.itemId = item.id;
+                card.innerHTML = `
+                    <div class="item-card-header">
+                        <div class="item-name">${escapeHtml(item.name)}</div>
+                        <span class="item-type-badge">${escapeHtml(item.item_type || 'good')}</span>
+                    </div>
+                    ${item.producer_id ? `<div class="item-producer">Produced by a contributor</div>` : ''}
+                    ${item.description ? `<div class="item-desc">${escapeHtml(item.description)}</div>` : ''}
+                    <div class="item-pricing">
+                        <div class="label">Production cost</div><div class="value">${cost.toFixed(2)}</div>
+                        <div class="label">Donation</div><div class="value">${donation.toFixed(2)}</div>
+                        <div class="item-total-row" style="grid-column: 1 / -1;">
+                            <span>You pay</span><span>${total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="item-availability">${availability}${soldOut ? ' — Sold out' : ''}</div>
+                    <button class="item-buy-btn" ${canBuy ? '' : 'disabled'} title="${buttonTitle}">
+                        ${buttonLabel}
+                    </button>
+                `;
+
+                if (canBuy) {
+                    const btn = card.querySelector('.item-buy-btn');
+                    btn.addEventListener('click', () => openPurchaseModal(item));
+                }
+
+                grid.appendChild(card);
+            }
+            target.appendChild(grid);
+        }
+
+        function openPurchaseModal(item) {
+            const cost = parseFloat(item.production_cost) || 0;
+            const donation = parseFloat(item.donation_amount) || 0;
+            const unitTotal = cost + donation;
+            const qtyAvailable = parseInt(item.quantity_available, 10);
+            const sold = parseInt(item.quantity_sold || 0, 10);
+            const remaining = qtyAvailable === -1 ? 100 : Math.max(qtyAvailable - sold, 0);
+            const maxQty = Math.min(remaining, 100);
+            const balance = parseFloat(currentUser.virtual_balance ?? 0);
+
+            const backdrop = document.createElement('div');
+            backdrop.className = 'purchase-modal-backdrop';
+            backdrop.innerHTML = `
+                <div class="purchase-modal" role="dialog" aria-modal="true">
+                    <h3>Purchase item</h3>
+                    <div class="pm-item-name">${escapeHtml(item.name)}</div>
+                    <div class="pm-qty">
+                        <label for="pm-qty-input">Quantity</label>
+                        <input type="number" id="pm-qty-input" min="1" max="${maxQty}" step="1" value="1">
+                        <span style="color:#7f8c8d;font-size:13px;">(max ${maxQty})</span>
+                    </div>
+                    <div class="pm-pricing">
+                        <div class="label">Unit cost</div><div class="value" id="pm-unit-cost">${cost.toFixed(2)}</div>
+                        <div class="label">Unit donation</div><div class="value" id="pm-unit-donation">${donation.toFixed(2)}</div>
+                        <div class="label">Subtotal cost</div><div class="value" id="pm-sub-cost">${cost.toFixed(2)}</div>
+                        <div class="label">Subtotal donation</div><div class="value" id="pm-sub-donation">${donation.toFixed(2)}</div>
+                        <div class="pm-total-row"><span>You pay</span><span id="pm-total">${unitTotal.toFixed(2)}</span></div>
+                    </div>
+                    <div class="pm-balance" id="pm-balance">Your balance: ${balance.toFixed(2)}</div>
+                    <div class="pm-error" id="pm-error" style="display:none;"></div>
+                    <div class="pm-actions">
+                        <button type="button" class="pm-cancel">Cancel</button>
+                        <button type="button" class="pm-confirm">Confirm purchase</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(backdrop);
+
+            const qtyInput = backdrop.querySelector('#pm-qty-input');
+            const subCost = backdrop.querySelector('#pm-sub-cost');
+            const subDonation = backdrop.querySelector('#pm-sub-donation');
+            const totalEl = backdrop.querySelector('#pm-total');
+            const balanceEl = backdrop.querySelector('#pm-balance');
+            const errorEl = backdrop.querySelector('#pm-error');
+            const confirmBtn = backdrop.querySelector('.pm-confirm');
+            const cancelBtn = backdrop.querySelector('.pm-cancel');
+
+            function recalc() {
+                let q = parseInt(qtyInput.value, 10);
+                if (isNaN(q) || q < 1) q = 1;
+                if (q > maxQty) q = maxQty;
+                qtyInput.value = q;
+
+                const sc = cost * q;
+                const sd = donation * q;
+                const tot = sc + sd;
+                subCost.textContent = sc.toFixed(2);
+                subDonation.textContent = sd.toFixed(2);
+                totalEl.textContent = tot.toFixed(2);
+
+                if (tot > balance) {
+                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)} — not enough.`;
+                    balanceEl.classList.add('insufficient');
+                    confirmBtn.disabled = true;
+                } else {
+                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)} → ${(balance - tot).toFixed(2)} after purchase`;
+                    balanceEl.classList.remove('insufficient');
+                    confirmBtn.disabled = false;
+                }
+            }
+
+            qtyInput.addEventListener('input', recalc);
+            recalc();
+
+            function close() { backdrop.remove(); }
+            cancelBtn.addEventListener('click', close);
+            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+            confirmBtn.addEventListener('click', async () => {
+                errorEl.style.display = 'none';
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Processing…';
+
+                const q = parseInt(qtyInput.value, 10);
+                try {
+                    const resp = await fetch('/api/purchases', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-User-Id': currentUser.id },
+                        credentials: 'include',
+                        body: JSON.stringify({ item_id: item.id, quantity: q })
+                    });
+                    const data = await resp.json();
+
+                    if (!data.success) {
+                        errorEl.textContent = data.error || 'Purchase failed';
+                        errorEl.style.display = 'block';
+                        confirmBtn.disabled = false;
+                        confirmBtn.textContent = 'Confirm purchase';
+                        return;
+                    }
+
+                    currentUser.virtual_balance = data.new_balance;
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+
+                    if (typeof initHeaderNav === 'function') initHeaderNav();
+
+                    if (data.campaign && typeof data.campaign.current_amount === 'number') {
+                        campaign.current_amount = data.campaign.current_amount;
+                        displayCampaign(campaign);
+                    }
+
+                    await loadItems();
+                    close();
+                    showFlash(`Purchase complete. ${data.total_donation.toFixed(2)} donated to the campaign.`);
+                } catch (err) {
+                    console.error(err);
+                    errorEl.textContent = 'Network error. Please try again.';
+                    errorEl.style.display = 'block';
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Confirm purchase';
+                }
+            });
+        }
+
+        function renderOfferProduceButton() {
+            const slot = document.getElementById('offer-produce-slot');
+            if (!slot) return;
+            slot.innerHTML = '';
+
+            if (!currentUser) return;
+            if (!campaign || campaign.status !== 'published') return;
+            if (currentUser.id === campaign.organizer_id) return;
+            if (!['volunteer', 'company'].includes(currentUser.role)) return;
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'offer-produce-btn';
+            btn.textContent = '+ Offer to produce';
+            btn.title = 'Offer to make a good or provide a service for this campaign';
+            btn.addEventListener('click', openOfferModal);
+            slot.appendChild(btn);
+        }
+
+        function openOfferModal() {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'offer-modal-backdrop';
+            backdrop.innerHTML = `
+                <div class="offer-modal" role="dialog" aria-modal="true">
+                    <h3>Offer to produce</h3>
+                    <div class="om-help">
+                        Describe the good or service you'll make for this campaign. If the organizer accepts,
+                        it will be added to the campaign catalog at the price you propose (cost + donation).
+                    </div>
+
+                    <div>
+                        <label for="om-name">Item name</label>
+                        <input type="text" id="om-name" maxlength="255" placeholder="e.g. Hand-knit scarf" required>
+                    </div>
+
+                    <div>
+                        <label for="om-desc">Description (optional)</label>
+                        <textarea id="om-desc" maxlength="1000" placeholder="Material, size, anything the organizer should know"></textarea>
+                    </div>
+
+                    <div class="om-grid">
+                        <div>
+                            <label for="om-type">Type</label>
+                            <select id="om-type">
+                                <option value="good">Good</option>
+                                <option value="service">Service</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="om-cost">Production cost</label>
+                            <input type="number" id="om-cost" min="0" step="0.01" value="0.00">
+                        </div>
+                        <div>
+                            <label for="om-donation">Donation</label>
+                            <input type="number" id="om-donation" min="0" step="0.01" value="0.00">
+                        </div>
+                        <div>
+                            <label for="om-qty">Quantity</label>
+                            <input type="number" id="om-qty" min="1" max="1000" step="1" value="1">
+                        </div>
+                    </div>
+
+                    <div class="om-total">
+                        <span>Total price per item</span>
+                        <span id="om-total">0.00</span>
+                    </div>
+
+                    <div class="om-error" id="om-error" style="display:none;"></div>
+
+                    <div class="om-actions">
+                        <button type="button" class="om-cancel">Cancel</button>
+                        <button type="button" class="om-submit">Submit offer</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(backdrop);
+
+            const cost = backdrop.querySelector('#om-cost');
+            const donation = backdrop.querySelector('#om-donation');
+            const total = backdrop.querySelector('#om-total');
+            const errorEl = backdrop.querySelector('#om-error');
+            const cancelBtn = backdrop.querySelector('.om-cancel');
+            const submitBtn = backdrop.querySelector('.om-submit');
+
+            function recalc() {
+                const t = (parseFloat(cost.value) || 0) + (parseFloat(donation.value) || 0);
+                total.textContent = t.toFixed(2);
+            }
+            cost.addEventListener('input', recalc);
+            donation.addEventListener('input', recalc);
+            recalc();
+
+            function close() { backdrop.remove(); }
+            cancelBtn.addEventListener('click', close);
+            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+            submitBtn.addEventListener('click', async () => {
+                errorEl.style.display = 'none';
+
+                const name = backdrop.querySelector('#om-name').value.trim();
+                const desc = backdrop.querySelector('#om-desc').value.trim();
+                const type = backdrop.querySelector('#om-type').value;
+                const costVal = parseFloat(cost.value);
+                const donationVal = parseFloat(donation.value);
+                const qty = parseInt(backdrop.querySelector('#om-qty').value, 10);
+
+                if (!name) {
+                    errorEl.textContent = 'Item name is required.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                if (!(costVal >= 0) || !(donationVal >= 0) || costVal + donationVal <= 0) {
+                    errorEl.textContent = 'Cost + donation must be greater than zero.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                if (isNaN(qty) || qty < 1 || qty > 1000) {
+                    errorEl.textContent = 'Quantity must be between 1 and 1000.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting…';
+
+                try {
+                    const resp = await fetch('/api/production-offers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-User-Id': currentUser.id },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            campaign_id: campaign.id,
+                            name,
+                            description: desc,
+                            item_type: type,
+                            proposed_production_cost: costVal,
+                            proposed_donation_amount: donationVal,
+                            quantity_offered: qty,
+                        })
+                    });
+                    const data = await resp.json();
+
+                    if (!data.success) {
+                        errorEl.textContent = data.error || 'Failed to submit offer';
+                        errorEl.style.display = 'block';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit offer';
+                        return;
+                    }
+
+                    close();
+                    showFlash(data.message || 'Offer submitted.');
+                } catch (err) {
+                    console.error(err);
+                    errorEl.textContent = 'Network error. Please try again.';
+                    errorEl.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit offer';
+                }
+            });
+        }
+
+        function showFlash(message) {
+            const flash = document.createElement('div');
+            flash.textContent = message;
+            flash.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#27ae60;color:#fff;padding:14px 24px;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,0.2);z-index:2000;font-weight:600;';
+            document.body.appendChild(flash);
+            setTimeout(() => flash.remove(), 3500);
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
         }
 
         function displayCampaign(campaign) {
@@ -90,14 +468,11 @@
             const daysLeft = Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
             const isExpired = daysLeft < 0;
 
-            // Determine if user can support this campaign
-            let canSupport = false;
             let supportButton = '';
 
             if (!currentUser) {
                 supportButton = '<a href="signup.html" class="btn btn-primary">Sign Up to Support</a>';
             } else if (currentUser.role === 'volunteer' || currentUser.role === 'company') {
-                canSupport = true;
                 supportButton = `
                     <button onclick="showSupportModal()" class="btn btn-primary">
                         ${currentUser.role === 'company' ? 'Support Campaign' : 'Donate / Volunteer'}
@@ -148,6 +523,16 @@
                                     <dd>${new Date(campaign.created_at).toLocaleDateString()}</dd>
                                 </dl>
                             </div>
+
+                            <div class="campaign-section">
+                                <div class="items-section-header">
+                                    <h2>Items &amp; Services</h2>
+                                    <div id="offer-produce-slot"></div>
+                                </div>
+                                <div id="items-catalog-container">
+                                    <div class="items-empty-state">Loading items…</div>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="campaign-detail-sidebar">
@@ -197,7 +582,6 @@
         }
 
         function showSupportModal() {
-            // TODO: Implement support modal for donations/volunteering
             alert('Support functionality coming soon!');
         }
 
@@ -211,7 +595,6 @@
             `;
         }
 
-        // Initialize on page load
         init();
     </script>
 </body>

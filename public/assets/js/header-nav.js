@@ -1,4 +1,3 @@
-// Unified header navigation for all pages
 function initHeaderNav() {
     const token = localStorage.getItem('auth_token');
     const userJson = localStorage.getItem('user');
@@ -15,18 +14,20 @@ function initHeaderNav() {
 }
 
 function renderAuthenticatedNav(user, headerNav) {
-    let leftLinks = '';
-
-    // All authenticated users see these links
-    leftLinks = `
+    let leftLinks = `
         <a href="index.html" class="nav-link">Home</a>
         <a href="campaigns.html" class="nav-link">Browse Campaigns</a>
     `;
 
-    // Organizers get additional link
     if (user.role === 'organizer') {
         leftLinks += `<a href="my-campaigns.html" class="nav-link">My Campaigns</a>`;
         leftLinks += `<a href="create-campaign.html" class="nav-link">Create Campaign</a>`;
+    }
+
+    let balancePill = '';
+    if ((user.role === 'volunteer' || user.role === 'company') && user.virtual_balance !== undefined && user.virtual_balance !== null) {
+        const balance = parseFloat(user.virtual_balance).toFixed(2);
+        balancePill = `<a href="profile.html" class="nav-link" title="Virtual currency balance" style="background:#fff9f5;border:1px solid #ffd7ba;border-radius:14px;padding:4px 12px;color:#ff6b6b;font-weight:600;">${balance}</a>`;
     }
 
     headerNav.innerHTML = `
@@ -34,12 +35,15 @@ function renderAuthenticatedNav(user, headerNav) {
             ${leftLinks}
         </div>
         <div class="nav-right">
+            ${balancePill}
             <span class="welcome-text">Welcome, ${user.first_name}</span>
             <a href="profile.html" class="nav-link">Profile</a>
             <a href="#" onclick="handleLogout(); return false;" class="nav-link">Logout</a>
         </div>
     `;
 }
+
+function renderHeaderNav() { initHeaderNav(); }
 
 function renderPublicNav(headerNav) {
     headerNav.innerHTML = `
@@ -60,7 +64,6 @@ function handleLogout() {
     window.location.href = 'index.html';
 }
 
-// Initialize on page load
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initHeaderNav);
 } else {

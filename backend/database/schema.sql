@@ -10,6 +10,7 @@ CREATE TABLE users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     bio TEXT DEFAULT NULL,
+    virtual_balance DECIMAL(10, 2) NOT NULL DEFAULT 100.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     email_verified BOOLEAN DEFAULT FALSE,
@@ -61,3 +62,70 @@ CREATE INDEX idx_campaigns_organizer ON campaigns(organizer_id);
 CREATE INDEX idx_campaigns_status ON campaigns(status);
 CREATE INDEX idx_campaigns_visibility ON campaigns(visibility);
 CREATE INDEX idx_campaigns_deadline ON campaigns(deadline);
+
+CREATE TABLE campaign_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id INTEGER NOT NULL,
+    producer_id INTEGER DEFAULT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT NULL,
+    item_type VARCHAR(20) NOT NULL DEFAULT 'good',
+    production_cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    donation_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    quantity_available INTEGER NOT NULL DEFAULT 1,
+    quantity_sold INTEGER NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+    FOREIGN KEY (producer_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_campaign_items_campaign ON campaign_items(campaign_id);
+CREATE INDEX idx_campaign_items_status ON campaign_items(status);
+CREATE INDEX idx_campaign_items_producer ON campaign_items(producer_id);
+
+CREATE TABLE production_offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id INTEGER NOT NULL,
+    producer_id INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT NULL,
+    item_type VARCHAR(20) NOT NULL DEFAULT 'good',
+    proposed_production_cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    proposed_donation_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    quantity_offered INTEGER NOT NULL DEFAULT 1,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    organizer_note TEXT DEFAULT NULL,
+    accepted_item_id INTEGER DEFAULT NULL,
+    decided_at DATETIME DEFAULT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+    FOREIGN KEY (producer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (accepted_item_id) REFERENCES campaign_items(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_offers_campaign ON production_offers(campaign_id);
+CREATE INDEX idx_offers_producer ON production_offers(producer_id);
+CREATE INDEX idx_offers_status ON production_offers(status);
+
+CREATE TABLE purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL,
+    buyer_id INTEGER NOT NULL,
+    campaign_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_cost DECIMAL(10, 2) NOT NULL,
+    unit_donation DECIMAL(10, 2) NOT NULL,
+    total_paid DECIMAL(10, 2) NOT NULL,
+    total_donation DECIMAL(10, 2) NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id) REFERENCES campaign_items(id) ON DELETE RESTRICT,
+    FOREIGN KEY (buyer_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_purchases_buyer ON purchases(buyer_id);
+CREATE INDEX idx_purchases_item ON purchases(item_id);
+CREATE INDEX idx_purchases_campaign ON purchases(campaign_id);

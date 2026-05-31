@@ -12,9 +12,7 @@
         <div class="header-content">
             <nav>
                 <a href="index.html" class="logo">CharityBridge</a>
-                <div id="header-nav" class="header-nav-wrapper">
-                    <!-- Will be populated by JavaScript -->
-                </div>
+                <div id="header-nav" class="header-nav-wrapper"></div>
             </nav>
         </div>
     </header>
@@ -42,8 +40,30 @@
                 </dl>
             </div>
 
+            <div class="balance-card hidden" id="balance-card">
+                <div>
+                    <div class="balance-label">Virtual currency balance</div>
+                    <small style="color:#7f8c8d;">Used to purchase items from campaigns</small>
+                </div>
+                <div class="balance-amount" id="balance-amount">—</div>
+            </div>
+
             <div class="profile-actions">
                 <a href="index.html" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
+
+        <div class="card purchases-card hidden" id="purchases-card">
+            <h2>Recent purchases</h2>
+            <div id="purchases-container">
+                <div class="purchases-empty">Loading…</div>
+            </div>
+        </div>
+
+        <div class="card offers-card hidden" id="offers-card">
+            <h2>My production offers</h2>
+            <div id="offers-container">
+                <div class="purchases-empty">Loading…</div>
             </div>
         </div>
 
@@ -77,10 +97,8 @@
     <script src="assets/js/auth.js"></script>
     <script src="assets/js/header-nav.js"></script>
     <script>
-        // Set current year
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Load user data
         async function loadProfile() {
             const user = await requireAuth();
 
@@ -96,11 +114,162 @@
                     document.getElementById('user-bio').style.color = '#2c3e50';
                 }
 
-                // Show organizer section if applicable
                 if (user.role === 'organizer' || user.role === 'company') {
                     document.getElementById('organizer-section').style.display = 'block';
                 }
+
+                if (user.role === 'volunteer' || user.role === 'company') {
+                    const balanceCard = document.getElementById('balance-card');
+                    balanceCard.classList.remove('hidden');
+                    const balance = parseFloat(user.virtual_balance ?? 0);
+                    document.getElementById('balance-amount').textContent = balance.toFixed(2);
+
+                    document.getElementById('purchases-card').classList.remove('hidden');
+                    loadPurchases(user);
+
+                    document.getElementById('offers-card').classList.remove('hidden');
+                    loadOffers(user);
+                }
             }
+        }
+
+        async function loadOffers(user) {
+            const container = document.getElementById('offers-container');
+            try {
+                const resp = await fetch('/api/production-offers?my=true', {
+                    credentials: 'include',
+                    headers: { 'X-User-Id': user.id }
+                });
+                const data = await resp.json();
+
+                if (!data.success || !Array.isArray(data.offers) || data.offers.length === 0) {
+                    container.innerHTML = '<div class="purchases-empty">You have not made any production offers yet.</div>';
+                    return;
+                }
+
+                renderOffers(data.offers, container, user);
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<div class="purchases-empty">Could not load offers.</div>';
+            }
+        }
+
+        function renderOffers(offers, container, user) {
+            const rows = offers.map(o => {
+                const total = (parseFloat(o.proposed_production_cost) + parseFloat(o.proposed_donation_amount)) * o.quantity_offered;
+                const cancelBtn = o.status === 'pending'
+                    ? `<button class="btn-link" data-offer-id="${o.id}" data-action="cancel">Cancel</button>`
+                    : '';
+                const note = o.status === 'rejected' && o.organizer_note
+                    ? `<div class="offer-note">"${escapeHtml(o.organizer_note)}"</div>` : '';
+                return `
+                    <tr>
+                        <td>${new Date(o.created_at).toLocaleDateString()}</td>
+                        <td>${escapeHtml(o.campaign_title)}</td>
+                        <td>${escapeHtml(o.name)}${note}</td>
+                        <td class="num">${o.quantity_offered}</td>
+                        <td class="num">${total.toFixed(2)}</td>
+                        <td><span class="offer-status-badge offer-status-${o.status}">${o.status}</span></td>
+                        <td class="offer-row-actions">${cancelBtn}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            container.innerHTML = `
+                <table class="purchases-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Campaign</th>
+                            <th>Item</th>
+                            <th class="num">Qty</th>
+                            <th class="num">Total value</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+
+            container.querySelectorAll('[data-action="cancel"]').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    if (!confirm('Cancel this offer?')) return;
+                    const offerId = btn.dataset.offerId;
+                    btn.disabled = true;
+                    try {
+                        const resp = await fetch(`/api/production-offers?id=${offerId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'X-User-Id': user.id },
+                            credentials: 'include',
+                            body: JSON.stringify({ action: 'cancel' })
+                        });
+                        const data = await resp.json();
+                        if (data.success) {
+                            loadOffers(user);
+                        } else {
+                            alert(data.error || 'Failed to cancel offer');
+                            btn.disabled = false;
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Network error');
+                        btn.disabled = false;
+                    }
+                });
+            });
+        }
+
+        async function loadPurchases(user) {
+            const container = document.getElementById('purchases-container');
+            try {
+                const resp = await fetch('/api/purchases', {
+                    credentials: 'include',
+                    headers: { 'X-User-Id': user.id }
+                });
+                const data = await resp.json();
+
+                if (!data.success || !Array.isArray(data.purchases) || data.purchases.length === 0) {
+                    container.innerHTML = '<div class="purchases-empty">You have not made any purchases yet.</div>';
+                    return;
+                }
+
+                const rows = data.purchases.map(p => `
+                    <tr>
+                        <td>${new Date(p.created_at).toLocaleDateString()}</td>
+                        <td>${escapeHtml(p.campaign_title)}</td>
+                        <td>${escapeHtml(p.item_name)}</td>
+                        <td class="num">${p.quantity}</td>
+                        <td class="num">${parseFloat(p.total_paid).toFixed(2)}</td>
+                        <td class="num">${parseFloat(p.total_donation).toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+                container.innerHTML = `
+                    <table class="purchases-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Campaign</th>
+                                <th>Item</th>
+                                <th class="num">Qty</th>
+                                <th class="num">Paid</th>
+                                <th class="num">Donated</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<div class="purchases-empty">Could not load purchases.</div>';
+            }
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
         }
 
         loadProfile();
