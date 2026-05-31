@@ -69,6 +69,7 @@
                     displayCampaign(campaign);
                     loadItems();
                     renderOfferProduceButton();
+                    loadContributionsSummary();
                 } else {
                     showError(data.error || 'Campaign not found');
                 }
@@ -562,6 +563,12 @@
                                 <div class="campaign-actions">
                                     ${supportButton}
                                 </div>
+
+                                <div class="contrib-summary" id="contrib-summary" style="display:none;">
+                                    <div class="label">Monetary donations</div><div class="value" id="cs-monetary">—</div>
+                                    <div class="label">Volunteer hours pledged</div><div class="value" id="cs-hours">—</div>
+                                    <div class="label">Goods pledges</div><div class="value" id="cs-goods">—</div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -582,7 +589,220 @@
         }
 
         function showSupportModal() {
-            alert('Support functionality coming soon!');
+            openContributeModal('monetary');
+        }
+
+        function openContributeModal(initialTab) {
+            if (!currentUser) { window.location.href = 'signup.html'; return; }
+
+            const balance = parseFloat(currentUser.virtual_balance ?? 0);
+            const backdrop = document.createElement('div');
+            backdrop.className = 'contribute-modal-backdrop';
+            backdrop.innerHTML = `
+                <div class="contribute-modal" role="dialog" aria-modal="true">
+                    <h3>Support this campaign</h3>
+
+                    <div class="cm-tabs">
+                        <button type="button" class="cm-tab" data-tab="monetary">Donate money</button>
+                        <button type="button" class="cm-tab" data-tab="hours">Volunteer hours</button>
+                        <button type="button" class="cm-tab" data-tab="goods">Pledge goods</button>
+                    </div>
+
+                    <div class="cm-panel" data-panel="monetary">
+                        <div class="cm-help">Donate virtual currency directly to the campaign goal.</div>
+                        <div>
+                            <label for="cm-amount">Amount</label>
+                            <input type="number" id="cm-amount" min="0.01" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="cm-balance" id="cm-balance">Your balance: ${balance.toFixed(2)}</div>
+                    </div>
+
+                    <div class="cm-panel" data-panel="hours">
+                        <div class="cm-help">Sign up to volunteer time for this campaign. The organizer will reach out to coordinate.</div>
+                        <div>
+                            <label for="cm-hours">Hours you can offer</label>
+                            <input type="number" id="cm-hours" min="0.5" step="0.5" placeholder="e.g. 4">
+                        </div>
+                    </div>
+
+                    <div class="cm-panel" data-panel="goods">
+                        <div class="cm-help">Pledge goods you already own that the campaign can use. The organizer will follow up with you.</div>
+                        <div>
+                            <label for="cm-desc">What are you pledging?</label>
+                            <textarea id="cm-desc" maxlength="1000" placeholder="e.g. 10 boxes of canned food, 5 children's coats"></textarea>
+                        </div>
+                        <div>
+                            <label for="cm-value">Estimated value (optional)</label>
+                            <input type="number" id="cm-value" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="cm-note">Note for the organizer (optional)</label>
+                        <textarea id="cm-note" maxlength="500" placeholder="Anything they should know"></textarea>
+                    </div>
+
+                    <div class="cm-error" id="cm-error" style="display:none;"></div>
+
+                    <div class="cm-actions">
+                        <button type="button" class="cm-cancel">Cancel</button>
+                        <button type="button" class="cm-submit">Submit</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(backdrop);
+
+            let activeTab = initialTab || 'monetary';
+            const tabs = backdrop.querySelectorAll('.cm-tab');
+            const panels = backdrop.querySelectorAll('.cm-panel');
+            const errorEl = backdrop.querySelector('#cm-error');
+            const amountInput = backdrop.querySelector('#cm-amount');
+            const balanceEl = backdrop.querySelector('#cm-balance');
+            const cancelBtn = backdrop.querySelector('.cm-cancel');
+            const submitBtn = backdrop.querySelector('.cm-submit');
+
+            function setTab(tab) {
+                activeTab = tab;
+                tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+                panels.forEach(p => p.classList.toggle('active', p.dataset.panel === tab));
+                errorEl.style.display = 'none';
+                if (tab === 'monetary') recalcBalance();
+            }
+
+            function recalcBalance() {
+                const amt = parseFloat(amountInput.value) || 0;
+                if (amt > balance) {
+                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)} — not enough.`;
+                    balanceEl.classList.add('insufficient');
+                    submitBtn.disabled = true;
+                } else if (amt > 0) {
+                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)} → ${(balance - amt).toFixed(2)} after donation`;
+                    balanceEl.classList.remove('insufficient');
+                    submitBtn.disabled = false;
+                } else {
+                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)}`;
+                    balanceEl.classList.remove('insufficient');
+                    submitBtn.disabled = false;
+                }
+            }
+            amountInput.addEventListener('input', recalcBalance);
+
+            tabs.forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+            setTab(activeTab);
+
+            function close() { backdrop.remove(); }
+            cancelBtn.addEventListener('click', close);
+            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+            submitBtn.addEventListener('click', async () => {
+                errorEl.style.display = 'none';
+                const note = backdrop.querySelector('#cm-note').value.trim();
+                const body = { campaign_id: campaign.id, type: activeTab, note };
+
+                if (activeTab === 'monetary') {
+                    const amt = parseFloat(amountInput.value);
+                    if (!(amt > 0)) {
+                        errorEl.textContent = 'Enter an amount greater than 0.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    if (amt > balance) {
+                        errorEl.textContent = 'Amount exceeds your balance.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    body.amount = amt;
+                } else if (activeTab === 'hours') {
+                    const h = parseFloat(backdrop.querySelector('#cm-hours').value);
+                    if (!(h > 0)) {
+                        errorEl.textContent = 'Enter a positive number of hours.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    body.hours_count = h;
+                } else {
+                    const desc = backdrop.querySelector('#cm-desc').value.trim();
+                    if (!desc) {
+                        errorEl.textContent = 'Describe what you are pledging.';
+                        errorEl.style.display = 'block';
+                        return;
+                    }
+                    body.goods_description = desc;
+                    const val = backdrop.querySelector('#cm-value').value.trim();
+                    if (val) body.goods_estimated_value = parseFloat(val);
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting…';
+
+                try {
+                    const resp = await fetch('/api/contributions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-User-Id': currentUser.id },
+                        credentials: 'include',
+                        body: JSON.stringify(body)
+                    });
+                    const data = await resp.json();
+
+                    if (!data.success) {
+                        errorEl.textContent = data.error || 'Contribution failed';
+                        errorEl.style.display = 'block';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit';
+                        return;
+                    }
+
+                    if (data.type === 'monetary') {
+                        currentUser.virtual_balance = data.new_balance;
+                        localStorage.setItem('user', JSON.stringify(currentUser));
+                        if (typeof initHeaderNav === 'function') initHeaderNav();
+                        if (data.campaign && typeof data.campaign.current_amount === 'number') {
+                            campaign.current_amount = data.campaign.current_amount;
+                            displayCampaign(campaign);
+                            renderOfferProduceButton();
+                            loadItems();
+                        }
+                    }
+
+                    loadContributionsSummary();
+                    close();
+                    showFlash(data.message || 'Thank you for your contribution!');
+                } catch (err) {
+                    console.error(err);
+                    errorEl.textContent = 'Network error. Please try again.';
+                    errorEl.style.display = 'block';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit';
+                }
+            });
+        }
+
+        async function loadContributionsSummary() {
+            const wrapper = document.getElementById('contrib-summary');
+            if (!wrapper) return;
+            try {
+                const resp = await fetch(`/api/contributions?summary=true&campaign_id=${campaign.id}`, {
+                    credentials: 'include'
+                });
+                const data = await resp.json();
+                if (!data.success || !data.summary) return;
+                const s = data.summary;
+
+                document.getElementById('cs-monetary').textContent =
+                    `${s.monetary_total.toFixed(2)} (${s.monetary_count})`;
+                document.getElementById('cs-hours').textContent =
+                    s.hours_count > 0 ? `${s.hours_total.toFixed(1)} h (${s.hours_count})` : '0';
+                document.getElementById('cs-goods').textContent =
+                    s.goods_count > 0
+                        ? (s.goods_value > 0 ? `${s.goods_count} (~${s.goods_value.toFixed(2)})` : `${s.goods_count}`)
+                        : '0';
+
+                if (s.monetary_count + s.hours_count + s.goods_count > 0) {
+                    wrapper.style.display = 'grid';
+                }
+            } catch (e) {
+                console.error('summary load failed', e);
+            }
         }
 
         function showError(message) {

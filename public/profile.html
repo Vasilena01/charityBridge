@@ -67,6 +67,13 @@
             </div>
         </div>
 
+        <div class="card offers-card hidden" id="contributions-card">
+            <h2>My contributions</h2>
+            <div id="contributions-container">
+                <div class="purchases-empty">Loading…</div>
+            </div>
+        </div>
+
         <div class="features profile-features">
             <div class="feature-card">
                 <h3>Browse Campaigns</h3>
@@ -129,7 +136,94 @@
 
                     document.getElementById('offers-card').classList.remove('hidden');
                     loadOffers(user);
+
+                    document.getElementById('contributions-card').classList.remove('hidden');
+                    loadContributions(user);
                 }
+            }
+        }
+
+        async function loadContributions(user) {
+            const container = document.getElementById('contributions-container');
+            try {
+                const resp = await fetch('/api/contributions?my=true', {
+                    credentials: 'include',
+                    headers: { 'X-User-Id': user.id }
+                });
+                const data = await resp.json();
+
+                if (!data.success || !Array.isArray(data.contributions) || data.contributions.length === 0) {
+                    container.innerHTML = '<div class="purchases-empty">You have not made any direct contributions yet.</div>';
+                    return;
+                }
+
+                const rows = data.contributions.map(c => {
+                    let detail;
+                    if (c.type === 'monetary') detail = parseFloat(c.amount).toFixed(2);
+                    else if (c.type === 'hours') detail = `${parseFloat(c.hours_count).toFixed(1)} h`;
+                    else detail = escapeHtml(c.goods_description) + (c.goods_estimated_value ? ` (~${parseFloat(c.goods_estimated_value).toFixed(2)})` : '');
+
+                    const cancelBtn = (c.type !== 'monetary' && c.status === 'pending')
+                        ? `<button class="btn-link" data-contrib-id="${c.id}">Cancel</button>`
+                        : '';
+
+                    return `
+                        <tr>
+                            <td>${new Date(c.created_at).toLocaleDateString()}</td>
+                            <td>${escapeHtml(c.campaign_title)}</td>
+                            <td>${c.type}</td>
+                            <td>${detail}</td>
+                            <td><span class="offer-status-badge offer-status-${c.status}">${c.status}</span></td>
+                            <td class="offer-row-actions">${cancelBtn}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                container.innerHTML = `
+                    <table class="purchases-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Campaign</th>
+                                <th>Type</th>
+                                <th>Detail</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                `;
+
+                container.querySelectorAll('[data-contrib-id]').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        if (!confirm('Cancel this contribution?')) return;
+                        const id = btn.dataset.contribId;
+                        btn.disabled = true;
+                        try {
+                            const resp = await fetch(`/api/contributions?id=${id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json', 'X-User-Id': user.id },
+                                credentials: 'include',
+                                body: JSON.stringify({ action: 'cancel' })
+                            });
+                            const data = await resp.json();
+                            if (data.success) {
+                                loadContributions(user);
+                            } else {
+                                alert(data.error || 'Failed');
+                                btn.disabled = false;
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            alert('Network error');
+                            btn.disabled = false;
+                        }
+                    });
+                });
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<div class="purchases-empty">Could not load contributions.</div>';
             }
         }
 

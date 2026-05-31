@@ -91,6 +91,16 @@
                     </div>
                 </div>
 
+                <div class="offers-section" id="contributions-section">
+                    <h2>Contributions Received</h2>
+                    <p class="offers-help">
+                        Direct monetary donations, volunteer hours, and goods pledges from supporters.
+                    </p>
+                    <div id="contributions-list">
+                        <div class="items-empty">Loading contributions…</div>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="submit" name="action" value="save" class="btn btn-secondary">
                         Save Changes
@@ -208,6 +218,7 @@
 
                     await loadItems();
                     await loadOffers();
+                    await loadContributions();
                 } else {
                     showMessage('error', data.error || 'Campaign not found');
                     setTimeout(() => {
@@ -473,6 +484,74 @@
             return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
                 '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
             }[c]));
+        }
+
+        async function loadContributions() {
+            const list = document.getElementById('contributions-list');
+            const user = JSON.parse(localStorage.getItem('user'));
+            try {
+                const resp = await fetch(`/api/contributions?campaign_id=${campaignId}`, {
+                    credentials: 'include',
+                    headers: { 'X-User-Id': user.id }
+                });
+                const data = await resp.json();
+
+                if (!data.success || !Array.isArray(data.contributions) || data.contributions.length === 0) {
+                    list.innerHTML = '<div class="items-empty">No contributions yet.</div>';
+                    return;
+                }
+
+                let monetaryTotal = 0, hoursTotal = 0, goodsCount = 0;
+                data.contributions.forEach(c => {
+                    if (c.type === 'monetary' && c.status === 'completed') monetaryTotal += parseFloat(c.amount);
+                    if (c.type === 'hours' && c.status !== 'cancelled') hoursTotal += parseFloat(c.hours_count);
+                    if (c.type === 'goods' && c.status !== 'cancelled') goodsCount++;
+                });
+
+                const rows = data.contributions.map(c => {
+                    let detail;
+                    if (c.type === 'monetary') detail = parseFloat(c.amount).toFixed(2);
+                    else if (c.type === 'hours') detail = `${parseFloat(c.hours_count).toFixed(1)} h`;
+                    else detail = escapeHtml(c.goods_description) + (c.goods_estimated_value ? ` (~${parseFloat(c.goods_estimated_value).toFixed(2)})` : '');
+
+                    const noteRow = c.note ? `<div class="offer-note">"${escapeHtml(c.note)}"</div>` : '';
+
+                    return `
+                        <div class="offer-row" style="grid-template-columns: 1fr;">
+                            <div class="offer-meta">
+                                ${new Date(c.created_at).toLocaleDateString()} ·
+                                From ${escapeHtml(c.first_name)} ${escapeHtml(c.last_name)} (${escapeHtml(c.contributor_role)})
+                                · <span class="offer-status-line">${escapeHtml(c.status)}</span>
+                            </div>
+                            <div class="offer-name">
+                                ${escapeHtml(c.type)}: ${detail}
+                            </div>
+                            ${noteRow}
+                        </div>
+                    `;
+                }).join('');
+
+                list.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;">
+                        <div style="background:#fff9f5;padding:12px;border-radius:8px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#ff6b6b;">${monetaryTotal.toFixed(2)}</div>
+                            <div style="font-size:12px;color:#7f8c8d;text-transform:uppercase;">Donated</div>
+                        </div>
+                        <div style="background:#fff9f5;padding:12px;border-radius:8px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#ff6b6b;">${hoursTotal.toFixed(1)} h</div>
+                            <div style="font-size:12px;color:#7f8c8d;text-transform:uppercase;">Volunteer hours</div>
+                        </div>
+                        <div style="background:#fff9f5;padding:12px;border-radius:8px;text-align:center;">
+                            <div style="font-size:20px;font-weight:700;color:#ff6b6b;">${goodsCount}</div>
+                            <div style="font-size:12px;color:#7f8c8d;text-transform:uppercase;">Goods pledges</div>
+                        </div>
+                    </div>
+                    ${rows}
+                `;
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = '<div class="items-empty">Could not load contributions.</div>';
+            }
         }
 
         async function handleEditCampaign(event) {
