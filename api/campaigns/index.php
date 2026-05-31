@@ -61,7 +61,8 @@ try {
     }
 
 } catch (Exception $e) {
-    http_response_code($e->getCode() ?: 500);
+    $code = is_int($e->getCode()) && $e->getCode() >= 100 && $e->getCode() < 600 ? $e->getCode() : 500;
+    http_response_code($code);
     $response['error'] = $e->getMessage();
 }
 
