@@ -110,6 +110,28 @@ CREATE INDEX idx_offers_campaign ON production_offers(campaign_id);
 CREATE INDEX idx_offers_producer ON production_offers(producer_id);
 CREATE INDEX idx_offers_status ON production_offers(status);
 
+CREATE TABLE contributions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id INTEGER NOT NULL,
+    contributor_id INTEGER NOT NULL,
+    type VARCHAR(20) NOT NULL,
+    amount DECIMAL(10, 2) DEFAULT NULL,
+    hours_count DECIMAL(6, 2) DEFAULT NULL,
+    goods_description TEXT DEFAULT NULL,
+    goods_estimated_value DECIMAL(10, 2) DEFAULT NULL,
+    note TEXT DEFAULT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+    FOREIGN KEY (contributor_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_contributions_campaign ON contributions(campaign_id);
+CREATE INDEX idx_contributions_contributor ON contributions(contributor_id);
+CREATE INDEX idx_contributions_type ON contributions(type);
+CREATE INDEX idx_contributions_status ON contributions(status);
+
 CREATE TABLE purchases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     item_id INTEGER NOT NULL,
