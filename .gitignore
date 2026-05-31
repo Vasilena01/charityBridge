@@ -9,6 +9,14 @@ includes/config.php
 
 # Sessions (if file-based)
 /sessions/
+backend/sessions/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+backend/database/*.db
+backend/database/*.sqlite
 
 # Logs
 *.log
