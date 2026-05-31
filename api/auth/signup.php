@@ -70,8 +70,8 @@ try {
 
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
     $stmt = $pdo->prepare(
-        "INSERT INTO users (email, password_hash, first_name, last_name, role)
-         VALUES (:email, :password_hash, :first_name, :last_name, :role)"
+        "INSERT INTO users (email, password_hash, first_name, last_name, role, virtual_balance)
+         VALUES (:email, :password_hash, :first_name, :last_name, :role, 0.00)"
     );
     $result = $stmt->execute([
         'email' => $email,

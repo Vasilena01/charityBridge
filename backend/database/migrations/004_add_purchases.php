@@ -8,7 +8,7 @@ try {
         if ($c['name'] === 'virtual_balance') { $hasBalance = true; break; }
     }
     if (!$hasBalance) {
-        $pdo->exec("ALTER TABLE users ADD COLUMN virtual_balance DECIMAL(10, 2) NOT NULL DEFAULT 100.00");
+        $pdo->exec("ALTER TABLE users ADD COLUMN virtual_balance DECIMAL(10, 2) NOT NULL DEFAULT 0.00");
     }
 
     $pdo->exec("

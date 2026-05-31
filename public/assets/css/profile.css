@@ -50,6 +50,18 @@
     font-weight: 800;
 }
 
+.balance-card .balance-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.balance-deposit-btn {
+    font-size: 13px;
+    padding: 6px 14px;
+}
+
 .purchases-card {
     margin-top: 30px;
 }

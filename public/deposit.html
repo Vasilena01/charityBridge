@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposit Funds - CharityBridge</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/profile.css">
+    <link rel="stylesheet" href="assets/css/deposit.css">
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <nav>
+                <a href="index.html" class="logo">CharityBridge</a>
+                <div id="header-nav" class="header-nav-wrapper"></div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container deposit-container">
+        <div class="deposit-grid">
+            <div class="card deposit-card">
+                <h1>Deposit funds</h1>
+                <p class="deposit-sub">Top up your virtual currency.</p>
+
+                <div class="balance-card" id="balance-card">
+                    <div>
+                        <div class="balance-label">Current balance</div>
+                    </div>
+                    <div class="balance-amount" id="balance-amount">—</div>
+                </div>
+
+                <div id="message"></div>
+
+                <form id="depositForm" onsubmit="handleDeposit(event)" autocomplete="off">
+                    <div class="form-group">
+                        <label for="amount">Amount</label>
+                        <input type="number" id="amount" name="amount" min="1" max="10000" step="0.01" required placeholder="e.g. 50.00">
+                        <div class="quick-amounts">
+                            <button type="button" onclick="setAmount(25)">25</button>
+                            <button type="button" onclick="setAmount(50)">50</button>
+                            <button type="button" onclick="setAmount(100)">100</button>
+                            <button type="button" onclick="setAmount(250)">250</button>
+                            <button type="button" onclick="setAmount(500)">500</button>
+                        </div>
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <div class="form-group">
+                        <label for="card_number">Card number</label>
+                        <input type="text" id="card_number" name="card_number" required
+                               inputmode="numeric" maxlength="23"
+                               placeholder="1234 5678 9012 3456"
+                               oninput="formatCardNumber(this)">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expiry">Expiry (MM/YY)</label>
+                            <input type="text" id="expiry" name="expiry" required
+                                   maxlength="5" placeholder="12/29"
+                                   oninput="formatExpiry(this)">
+                        </div>
+                        <div class="form-group">
+                            <label for="cvv">CVV</label>
+                            <input type="text" id="cvv" name="cvv" required
+                                   inputmode="numeric" maxlength="4" placeholder="123"
+                                   oninput="this.value = this.value.replace(/\D/g, '')">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="card_holder">Cardholder name</label>
+                        <input type="text" id="card_holder" name="card_holder" required
+                               maxlength="100" placeholder="Name on card">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary deposit-submit" id="submit-btn">
+                        Deposit
+                    </button>
+                </form>
+            </div>
+
+            <div class="card deposit-history-card">
+                <h2>Recent deposits</h2>
+                <div id="deposits-list">
+                    <div class="purchases-empty">Loading…</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Making a difference together, one act of kindness at a time</p>
+        <p>&copy; <span id="year"></span> CharityBridge. All rights reserved.</p>
+    </footer>
+
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script src="assets/js/header-nav.js"></script>
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        let currentUser = null;
+
+        async function init() {
+            currentUser = await requireAuth();
+            if (!currentUser) return;
+
+            if (!['volunteer', 'company'].includes(currentUser.role)) {
+                showMessage('error', 'Only volunteers and companies can deposit funds.');
+                document.getElementById('depositForm').style.display = 'none';
+                return;
+            }
+
+            renderBalance();
+            await loadDeposits();
+        }
+
+        function renderBalance() {
+            const balance = parseFloat(currentUser.virtual_balance ?? 0);
+            document.getElementById('balance-amount').textContent = balance.toFixed(2);
+        }
+
+        function setAmount(v) {
+            document.getElementById('amount').value = v.toFixed(2);
+        }
+
+        function formatCardNumber(input) {
+            const digits = input.value.replace(/\D/g, '').slice(0, 19);
+            input.value = digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+        }
+
+        function formatExpiry(input) {
+            const digits = input.value.replace(/\D/g, '').slice(0, 4);
+            if (digits.length <= 2) input.value = digits;
+            else input.value = digits.slice(0, 2) + '/' + digits.slice(2);
+        }
+
+        async function handleDeposit(event) {
+            event.preventDefault();
+            const form = event.target;
+            const btn = document.getElementById('submit-btn');
+            clearMessage();
+
+            const amount = parseFloat(form.amount.value);
+            if (!(amount >= 1)) { showMessage('error', 'Amount must be at least 1.00'); return; }
+
+            const body = {
+                amount: amount,
+                card_number: form.card_number.value,
+                expiry: form.expiry.value,
+                cvv: form.cvv.value,
+                card_holder: form.card_holder.value.trim(),
+            };
+
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Processing…';
+
+                const resp = await fetch('/api/deposits', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-User-Id': currentUser.id },
+                    credentials: 'include',
+                    body: JSON.stringify(body)
+                });
+                const data = await resp.json();
+
+                if (!data.success) {
+                    showMessage('error', data.error || 'Deposit failed');
+                    return;
+                }
+
+                currentUser.virtual_balance = data.new_balance;
+                localStorage.setItem('user', JSON.stringify(currentUser));
+                renderBalance();
+
+                showMessage('success',
+                    `Deposited ${parseFloat(data.amount).toFixed(2)} from card •••• ${data.card_last4}. ` +
+                    `Balance: ${parseFloat(data.new_balance).toFixed(2)}`);
+
+                form.reset();
+                await loadDeposits();
+
+                if (typeof renderHeaderNav === 'function') renderHeaderNav();
+            } catch (e) {
+                console.error(e);
+                showMessage('error', 'Network error. Please try again.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Deposit';
+            }
+        }
+
+        async function loadDeposits() {
+            const list = document.getElementById('deposits-list');
+            try {
+                const resp = await fetch('/api/deposits', {
+                    headers: { 'X-User-Id': currentUser.id }, credentials: 'include'
+                });
+                const data = await resp.json();
+                if (!data.success || !Array.isArray(data.deposits) || data.deposits.length === 0) {
+                    list.innerHTML = '<div class="purchases-empty">No deposits yet.</div>';
+                    return;
+                }
+                list.innerHTML = `
+                    <table class="purchases-table">
+                        <thead>
+                            <tr><th>Date</th><th>Amount</th><th>Card</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            ${data.deposits.map(d => `
+                                <tr>
+                                    <td>${new Date(d.created_at).toLocaleString()}</td>
+                                    <td><strong>${parseFloat(d.amount).toFixed(2)}</strong></td>
+                                    <td>•••• ${escapeHtml(d.card_last4 || '----')}</td>
+                                    <td><span class="offer-status-badge offer-status-${escapeHtml(d.status)}">${escapeHtml(d.status)}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = '<div class="purchases-empty">Could not load deposits.</div>';
+            }
+        }
+
+        function showMessage(type, msg) {
+            const el = document.getElementById('message');
+            el.className = type === 'success' ? 'success' : 'errors';
+            el.innerHTML = `<p>${escapeHtml(msg)}</p>`;
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function clearMessage() {
+            const el = document.getElementById('message');
+            el.className = '';
+            el.innerHTML = '';
+        }
+
+        function escapeHtml(s) {
+            if (s === null || s === undefined) return '';
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+        }
+
+        init();
+    </script>
+</body>
+</html>

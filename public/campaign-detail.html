@@ -251,7 +251,7 @@
                 totalEl.textContent = tot.toFixed(2);
 
                 if (tot > balance) {
-                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)} — not enough.`;
+                    balanceEl.innerHTML = `Your balance: ${balance.toFixed(2)} — not enough. <a href="deposit.html">Deposit funds</a>`;
                     balanceEl.classList.add('insufficient');
                     confirmBtn.disabled = true;
                 } else {
@@ -714,7 +714,7 @@
             function recalcBalance() {
                 const amt = parseFloat(amountInput.value) || 0;
                 if (amt > balance) {
-                    balanceEl.textContent = `Your balance: ${balance.toFixed(2)} — not enough.`;
+                    balanceEl.innerHTML = `Your balance: ${balance.toFixed(2)} — not enough. <a href="deposit.html">Deposit funds</a>`;
                     balanceEl.classList.add('insufficient');
                     submitBtn.disabled = true;
                 } else if (amt > 0) {
