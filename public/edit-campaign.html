@@ -61,7 +61,31 @@
                         <input type="date" id="deadline" name="deadline" required>
                     </div>
 
-                    <div class="form-group"></div>
+                    <div class="form-group">
+                        <label for="visibility">Visibility</label>
+                        <select id="visibility" name="visibility">
+                            <option value="public">Public — anyone can see and contribute</option>
+                            <option value="private">Private — invite-only</option>
+                        </select>
+                        <small class="form-hint">Switching to private hides the campaign from the public list and limits actions to invited users.</small>
+                    </div>
+                </div>
+
+                <div class="offers-section" id="invites-section" style="display:none;">
+                    <h2>Invites</h2>
+                    <p class="offers-help">
+                        Invite users by their account email. They'll see the invitation on their profile and can accept or decline.
+                    </p>
+
+                    <div class="invite-form-row">
+                        <input type="email" id="invite-email" placeholder="user@example.com" />
+                        <input type="text" id="invite-message" placeholder="Optional message" />
+                        <button type="button" class="add-item-btn" onclick="sendInvite()">Send Invite</button>
+                    </div>
+
+                    <div id="invites-list">
+                        <div class="items-empty">Loading invites…</div>
+                    </div>
                 </div>
 
                 <div class="items-section" id="items-section">
@@ -206,6 +230,7 @@
                     document.getElementById('description').value = currentCampaign.description;
                     document.getElementById('campaign_type').value = currentCampaign.campaign_type;
                     document.getElementById('goal_amount').value = currentCampaign.goal_amount;
+                    document.getElementById('visibility').value = currentCampaign.visibility === 'private' ? 'private' : 'public';
 
                     const deadlineDate = new Date(currentCampaign.deadline);
                     document.getElementById('deadline').value = deadlineDate.toISOString().split('T')[0];
@@ -215,10 +240,16 @@
                     }
 
                     toggleGoalAmount();
+                    toggleInvitesSection();
+
+                    document.getElementById('visibility').addEventListener('change', () => {
+                        toggleInvitesSection();
+                    });
 
                     await loadItems();
                     await loadOffers();
                     await loadContributions();
+                    await loadInvites();
                 } else {
                     showMessage('error', data.error || 'Campaign not found');
                     setTimeout(() => {
@@ -486,6 +517,96 @@
             }[c]));
         }
 
+        function toggleInvitesSection() {
+            const visibility = document.getElementById('visibility').value;
+            document.getElementById('invites-section').style.display = visibility === 'private' ? 'block' : 'none';
+        }
+
+        async function loadInvites() {
+            const list = document.getElementById('invites-list');
+            if (!list) return;
+            list.innerHTML = '<div class="items-empty">Loading invites…</div>';
+
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                const resp = await fetch(`/api/campaign-invites?campaign_id=${campaignId}`, {
+                    headers: { 'X-User-Id': user.id }, credentials: 'include'
+                });
+                const data = await resp.json();
+                if (!data.success) {
+                    list.innerHTML = `<div class="items-empty">${escapeHtml(data.error || 'Could not load invites')}</div>`;
+                    return;
+                }
+                if (!Array.isArray(data.invites) || data.invites.length === 0) {
+                    list.innerHTML = '<div class="items-empty">No invites yet.</div>';
+                    return;
+                }
+                list.innerHTML = data.invites.map(inv => {
+                    const canRevoke = inv.status === 'pending' || inv.status === 'accepted';
+                    const revokeBtn = canRevoke
+                        ? `<button type="button" class="offer-btn offer-btn-reject" onclick="revokeInvite(${inv.id})">Revoke</button>`
+                        : '';
+                    return `
+                        <div class="offer-row">
+                            <div class="offer-meta">
+                                ${escapeHtml(inv.first_name)} ${escapeHtml(inv.last_name)}
+                                · ${escapeHtml(inv.email)}
+                                · <span class="offer-status-badge offer-status-${escapeHtml(inv.status)}">${escapeHtml(inv.status)}</span>
+                            </div>
+                            <div class="offer-actions">${revokeBtn}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error(e);
+                list.innerHTML = '<div class="items-empty">Could not load invites.</div>';
+            }
+        }
+
+        async function sendInvite() {
+            const emailInput = document.getElementById('invite-email');
+            const messageInput = document.getElementById('invite-message');
+            const email = emailInput.value.trim();
+            const message = messageInput.value.trim();
+            if (!email) { alert('Email is required.'); return; }
+
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                const resp = await fetch('/api/campaign-invites', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-User-Id': user.id },
+                    credentials: 'include',
+                    body: JSON.stringify({ campaign_id: parseInt(campaignId, 10), email, message: message || null })
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Could not send invite.'); return; }
+                emailInput.value = '';
+                messageInput.value = '';
+                await loadInvites();
+            } catch (e) {
+                console.error(e);
+                alert('Network error while sending invite.');
+            }
+        }
+
+        async function revokeInvite(id) {
+            if (!confirm('Revoke this invite? The user will lose access to the campaign.')) return;
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                const resp = await fetch(`/api/campaign-invites?id=${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-User-Id': user.id },
+                    credentials: 'include'
+                });
+                const data = await resp.json();
+                if (!data.success) { alert(data.error || 'Could not revoke invite.'); return; }
+                await loadInvites();
+            } catch (e) {
+                console.error(e);
+                alert('Network error while revoking invite.');
+            }
+        }
+
         async function loadContributions() {
             const list = document.getElementById('contributions-list');
             const user = JSON.parse(localStorage.getItem('user'));
@@ -584,7 +705,8 @@
                 description: form.description.value.trim(),
                 campaign_type: campaignType,
                 goal_amount: goalAmount,
-                deadline: form.deadline.value + 'T23:59:59'
+                deadline: form.deadline.value + 'T23:59:59',
+                visibility: form.visibility.value === 'private' ? 'private' : 'public'
             };
 
             if (action === 'publish') {
