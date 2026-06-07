@@ -78,9 +78,7 @@ function listItems($campaignId, $pdo) {
 
     if (!can_view_campaign($campaign, $userId, $pdo)) {
         http_response_code(403);
-        throw new Exception($campaign['status'] === 'draft'
-            ? 'This campaign is not yet published'
-            : 'This campaign is private');
+        throw new Exception('This campaign is not yet published');
     }
 
     $stmt = $pdo->prepare(
@@ -115,9 +113,7 @@ function getItem($id, $pdo) {
 
     if (!can_view_campaign($campaign, $userId, $pdo)) {
         http_response_code(403);
-        throw new Exception($campaign['status'] === 'draft'
-            ? 'This item belongs to an unpublished campaign'
-            : 'This item belongs to a private campaign');
+        throw new Exception('This item belongs to an unpublished campaign');
     }
 
     $item['total_price'] = number_format((float)$item['production_cost'] + (float)$item['donation_amount'], 2, '.', '');
@@ -248,7 +244,7 @@ function readJsonInput() {
 }
 
 function fetchCampaign($id, $pdo) {
-    $stmt = $pdo->prepare("SELECT id, organizer_id, status, visibility FROM campaigns WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT id, organizer_id, status FROM campaigns WHERE id = :id");
     $stmt->execute(['id' => $id]);
     return $stmt->fetch();
 }

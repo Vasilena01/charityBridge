@@ -67,7 +67,6 @@
                 if (data.success && data.campaign) {
                     campaign = data.campaign;
                     displayCampaign(campaign);
-                    renderPrivateBanner(campaign);
                     loadItems();
                     renderOfferProduceButton();
                     loadContributionsSummary();
@@ -78,31 +77,6 @@
                 console.error('Error:', error);
                 showError('An error occurred while loading the campaign');
             }
-        }
-
-        function renderPrivateBanner(campaign) {
-            if (campaign.visibility !== 'private' || campaign.viewer_is_owner) return;
-
-            const status = campaign.viewer_invite_status;
-            const container = document.getElementById('campaign-detail-container');
-            if (!container) return;
-
-            const banner = document.createElement('div');
-            banner.className = 'private-banner';
-
-            if (status === 'pending') {
-                banner.innerHTML = `
-                    <strong>You're invited!</strong>
-                    This is a private campaign. Accept the invitation on your
-                    <a href="profile.html">profile</a> to take part.
-                `;
-            } else if (status === 'accepted') {
-                banner.innerHTML = `<strong>Private campaign.</strong> You have access as an invited participant.`;
-            } else {
-                banner.innerHTML = `<strong>Private campaign.</strong> Viewing is restricted.`;
-            }
-
-            container.insertBefore(banner, container.firstChild);
         }
 
         async function loadItems() {
@@ -142,12 +116,10 @@
 
                 const soldOut = qty !== -1 && sold >= qty;
                 const isOwner = currentUser && campaign && currentUser.id === campaign.organizer_id;
-                const hasAccess = viewerCanAct();
                 const canBuy = currentUser
                     && (currentUser.role === 'volunteer' || currentUser.role === 'company')
                     && !soldOut
-                    && !isOwner
-                    && hasAccess;
+                    && !isOwner;
 
                 let buttonLabel = 'Purchase';
                 let buttonTitle = 'Purchase this item';
@@ -155,7 +127,6 @@
                 else if (!currentUser) { buttonLabel = 'Sign in to purchase'; buttonTitle = 'Sign in to purchase'; }
                 else if (isOwner) { buttonLabel = 'Your campaign'; buttonTitle = 'Organizers cannot buy from their own campaign'; }
                 else if (currentUser.role === 'organizer') { buttonLabel = 'Organizers cannot purchase'; buttonTitle = ''; }
-                else if (!hasAccess) { buttonLabel = 'Accept invite to purchase'; buttonTitle = 'Accept the campaign invitation on your profile'; }
 
                 const card = document.createElement('div');
                 card.className = 'item-card';
@@ -323,7 +294,6 @@
             if (!campaign || campaign.status !== 'published') return;
             if (currentUser.id === campaign.organizer_id) return;
             if (!['volunteer', 'company'].includes(currentUser.role)) return;
-            if (!viewerCanAct()) return;
 
             const btn = document.createElement('button');
             btn.type = 'button';
@@ -332,12 +302,6 @@
             btn.title = 'Offer to make a good or provide a service for this campaign';
             btn.addEventListener('click', openOfferModal);
             slot.appendChild(btn);
-        }
-
-        function viewerCanAct() {
-            if (!campaign) return false;
-            if (campaign.visibility !== 'private') return true;
-            return campaign.viewer_invite_status === 'accepted';
         }
 
         function openOfferModal() {
@@ -511,16 +475,12 @@
             if (!currentUser) {
                 supportButton = '<a href="signup.html" class="btn btn-primary">Sign Up to Support</a>';
             } else if (currentUser.role === 'volunteer' || currentUser.role === 'company') {
-                if (campaign.visibility === 'private' && campaign.viewer_invite_status !== 'accepted') {
-                    supportButton = '<p style="color: #95a5a6;">Accept your invitation on your profile to participate</p>';
-                } else {
-                    canSupport = true;
-                    supportButton = `
-                        <button onclick="showSupportModal()" class="btn btn-primary">
-                            ${currentUser.role === 'company' ? 'Support Campaign' : 'Donate / Volunteer'}
-                        </button>
-                    `;
-                }
+                canSupport = true;
+                supportButton = `
+                    <button onclick="showSupportModal()" class="btn btn-primary">
+                        ${currentUser.role === 'company' ? 'Support Campaign' : 'Donate / Volunteer'}
+                    </button>
+                `;
             } else if (currentUser.role === 'organizer') {
                 if (campaign.organizer_id === currentUser.id) {
                     supportButton = '<a href="my-campaigns.html" class="btn btn-secondary">Manage Campaign</a>';

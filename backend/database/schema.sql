@@ -52,7 +52,6 @@ CREATE TABLE campaigns (
     current_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     deadline DATETIME NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'draft',
-    visibility VARCHAR(20) NOT NULL DEFAULT 'public',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE
@@ -60,7 +59,6 @@ CREATE TABLE campaigns (
 
 CREATE INDEX idx_campaigns_organizer ON campaigns(organizer_id);
 CREATE INDEX idx_campaigns_status ON campaigns(status);
-CREATE INDEX idx_campaigns_visibility ON campaigns(visibility);
 CREATE INDEX idx_campaigns_deadline ON campaigns(deadline);
 
 CREATE TABLE campaign_items (
@@ -131,26 +129,6 @@ CREATE INDEX idx_contributions_campaign ON contributions(campaign_id);
 CREATE INDEX idx_contributions_contributor ON contributions(contributor_id);
 CREATE INDEX idx_contributions_type ON contributions(type);
 CREATE INDEX idx_contributions_status ON contributions(status);
-
-CREATE TABLE campaign_invites (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    campaign_id INTEGER NOT NULL,
-    invited_user_id INTEGER NOT NULL,
-    invited_by INTEGER NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending',
-    message TEXT DEFAULT NULL,
-    decided_at DATETIME DEFAULT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (campaign_id, invited_user_id),
-    FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
-    FOREIGN KEY (invited_user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (invited_by) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_invites_campaign ON campaign_invites(campaign_id);
-CREATE INDEX idx_invites_user ON campaign_invites(invited_user_id);
-CREATE INDEX idx_invites_status ON campaign_invites(status);
 
 CREATE TABLE deposits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -90,9 +90,6 @@ function getAllCampaigns($pdo) {
         $params['status'] = $_GET['status'];
     }
 
-    $where[] = campaign_visibility_sql(':viewer_id');
-    $params['viewer_id'] = $viewerId;
-
     $whereClause = implode(' AND ', $where);
 
     $sql = "
@@ -135,10 +132,9 @@ function getCampaign($id, $pdo) {
         if ($campaign['status'] === 'draft') {
             throw new Exception('This campaign is not yet published');
         }
-        throw new Exception('This campaign is private');
+        throw new Exception('This campaign is not accessible');
     }
 
-    $campaign['viewer_invite_status'] = campaign_invite_status($campaign['id'], $userId, $pdo);
     $campaign['viewer_is_owner'] = $userId && (int)$campaign['organizer_id'] === $userId;
 
     return [
@@ -208,11 +204,10 @@ function createCampaign($pdo) {
     }
 
     $status = isset($input['publish']) && $input['publish'] ? 'published' : 'draft';
-    $visibility = $input['visibility'] ?? 'public';
 
     $stmt = $pdo->prepare("
-        INSERT INTO campaigns (organizer_id, title, description, campaign_type, goal_amount, deadline, status, visibility)
-        VALUES (:organizer_id, :title, :description, :campaign_type, :goal_amount, :deadline, :status, :visibility)
+        INSERT INTO campaigns (organizer_id, title, description, campaign_type, goal_amount, deadline, status)
+        VALUES (:organizer_id, :title, :description, :campaign_type, :goal_amount, :deadline, :status)
     ");
 
     $stmt->execute([
@@ -222,8 +217,7 @@ function createCampaign($pdo) {
         'campaign_type' => $input['campaign_type'],
         'goal_amount' => $input['goal_amount'],
         'deadline' => date('Y-m-d H:i:s', $deadline),
-        'status' => $status,
-        'visibility' => $visibility
+        'status' => $status
     ]);
 
     return [
@@ -263,7 +257,7 @@ function updateCampaign($id, $pdo) {
     $updates = [];
     $params = ['id' => $id];
 
-    $allowedFields = ['title', 'description', 'campaign_type', 'goal_amount', 'deadline', 'status', 'visibility'];
+    $allowedFields = ['title', 'description', 'campaign_type', 'goal_amount', 'deadline', 'status'];
     foreach ($allowedFields as $field) {
         if (isset($input[$field])) {
             $updates[] = "$field = :$field";

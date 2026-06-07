@@ -117,7 +117,7 @@ function createOffer($pdo) {
         throw new Exception('campaign_id is required');
     }
 
-    $stmt = $pdo->prepare("SELECT id, organizer_id, status, visibility FROM campaigns WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT id, organizer_id, status FROM campaigns WHERE id = :id");
     $stmt->execute(['id' => $campaignId]);
     $campaign = $stmt->fetch();
 
@@ -130,12 +130,8 @@ function createOffer($pdo) {
             http_response_code(403);
             throw new Exception('You cannot offer to produce for your own campaign');
         }
-        if ($campaign['status'] !== 'published') {
-            http_response_code(409);
-            throw new Exception('Cannot offer to produce for an unpublished campaign');
-        }
-        http_response_code(403);
-        throw new Exception('You need an accepted invitation to offer production for this private campaign');
+        http_response_code(409);
+        throw new Exception('Cannot offer to produce for an unpublished campaign');
     }
 
     $fields = validateOfferFields($input);

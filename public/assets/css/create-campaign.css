@@ -293,25 +293,6 @@
     color: #7f8c8d;
 }
 
-.invite-form-row {
-    display: grid;
-    grid-template-columns: 2fr 3fr auto;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-
-.invite-form-row input {
-    padding: 10px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 14px;
-}
-
-.invite-form-row input:focus {
-    outline: none;
-    border-color: #ff6b6b;
-}
-
 .offer-status-badge.offer-status-declined,
 .offer-status-badge.offer-status-revoked {
     background: #fdecea;

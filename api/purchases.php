@@ -78,7 +78,7 @@ function createPurchase($pdo) {
         $stmt = $pdo->prepare("
             SELECT i.id, i.campaign_id, i.production_cost, i.donation_amount,
                    i.quantity_available, i.quantity_sold, i.status,
-                   c.id AS campaign_pk, c.organizer_id, c.status AS campaign_status, c.visibility
+                   c.id AS campaign_pk, c.organizer_id, c.status AS campaign_status
             FROM campaign_items i
             JOIN campaigns c ON c.id = i.campaign_id
             WHERE i.id = :id
@@ -99,19 +99,14 @@ function createPurchase($pdo) {
             'id' => (int)$item['campaign_pk'],
             'organizer_id' => $item['organizer_id'],
             'status' => $item['campaign_status'],
-            'visibility' => $item['visibility'],
         ];
         if (!can_act_on_campaign($campaignForAccess, (int)$user['id'], $pdo)) {
             if ((int)$item['organizer_id'] === (int)$user['id']) {
                 http_response_code(403);
                 throw new Exception('Organizers cannot purchase items from their own campaign');
             }
-            if ($item['campaign_status'] !== 'published') {
-                http_response_code(409);
-                throw new Exception('This campaign is not currently accepting purchases');
-            }
-            http_response_code(403);
-            throw new Exception('You need an accepted invitation to purchase from this private campaign');
+            http_response_code(409);
+            throw new Exception('This campaign is not currently accepting purchases');
         }
 
         $qtyAvailable = (int)$item['quantity_available'];

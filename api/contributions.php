@@ -62,7 +62,7 @@ try {
 echo json_encode($response);
 
 function summaryForCampaign($campaignId, $pdo) {
-    $stmt = $pdo->prepare("SELECT id, organizer_id, status, visibility FROM campaigns WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT id, organizer_id, status FROM campaigns WHERE id = :id");
     $stmt->execute(['id' => $campaignId]);
     $campaign = $stmt->fetch();
     if (!$campaign) {
@@ -73,7 +73,7 @@ function summaryForCampaign($campaignId, $pdo) {
     $viewerId = optionalAuthUserId();
     if (!can_view_campaign($campaign, $viewerId, $pdo)) {
         http_response_code(403);
-        throw new Exception('This campaign is private');
+        throw new Exception('This campaign is not accessible');
     }
 
     $stmt = $pdo->prepare("
@@ -166,7 +166,7 @@ function createContribution($pdo) {
         throw new Exception('type must be monetary, hours, or goods');
     }
 
-    $stmt = $pdo->prepare("SELECT id, organizer_id, status, visibility FROM campaigns WHERE id = :id");
+    $stmt = $pdo->prepare("SELECT id, organizer_id, status FROM campaigns WHERE id = :id");
     $stmt->execute(['id' => $campaignId]);
     $campaign = $stmt->fetch();
     if (!$campaign) {
@@ -178,12 +178,8 @@ function createContribution($pdo) {
             http_response_code(403);
             throw new Exception('You cannot contribute to your own campaign');
         }
-        if ($campaign['status'] !== 'published') {
-            http_response_code(409);
-            throw new Exception('Campaign is not accepting contributions');
-        }
-        http_response_code(403);
-        throw new Exception('You need an accepted invitation to contribute to this private campaign');
+        http_response_code(409);
+        throw new Exception('Campaign is not accepting contributions');
     }
 
     if ($type === 'monetary') {

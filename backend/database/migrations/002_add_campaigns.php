@@ -20,7 +20,6 @@ try {
         current_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
         deadline DATETIME NOT NULL,
         status VARCHAR(20) NOT NULL DEFAULT 'draft',
-        visibility VARCHAR(20) NOT NULL DEFAULT 'public',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (organizer_id) REFERENCES users(id) ON DELETE CASCADE
@@ -34,7 +33,6 @@ try {
     $indexes = [
         "CREATE INDEX IF NOT EXISTS idx_campaigns_organizer ON campaigns(organizer_id)",
         "CREATE INDEX IF NOT EXISTS idx_campaigns_status ON campaigns(status)",
-        "CREATE INDEX IF NOT EXISTS idx_campaigns_visibility ON campaigns(visibility)",
         "CREATE INDEX IF NOT EXISTS idx_campaigns_deadline ON campaigns(deadline)"
     ];
 
