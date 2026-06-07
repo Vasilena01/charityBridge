@@ -1,39 +1,38 @@
 <?php
-// Database configuration
-define('DB_TYPE', 'sqlite');  // Changed from MySQL to SQLite
-define('DB_PATH', __DIR__ . '/../database/charity_bridge.db');
-define('DB_CHARSET', 'utf8mb4');
+require_once __DIR__ . '/env.php';
+Env::load(__DIR__ . '/../../.env');
 
-// Application constants
-define('SITE_URL', 'http://localhost/charity-bridge');
-define('SITE_NAME', 'CharityBridge');
-define('API_URL', SITE_URL . '/api');
+define('DB_TYPE', env('DB_DRIVER', 'sqlite'));
+define('DB_PATH', __DIR__ . '/../../' . env('DB_SQLITE_PATH', 'backend/database/charity_bridge.db'));
+define('DB_CHARSET', env('DB_CHARSET', 'utf8mb4'));
+define('DB_HOST', env('DB_HOST', 'localhost'));
+define('DB_NAME', env('DB_NAME', ''));
+define('DB_USER', env('DB_USER', ''));
+define('DB_PASS', env('DB_PASSWORD', ''));
 
-// Password requirements
-define('PASSWORD_MIN_LENGTH', 8);
+define('PASSWORD_MIN_LENGTH', Env::int('PASSWORD_MIN_LENGTH', 8));
 
-// Session configuration
 $sessionPath = __DIR__ . '/../sessions';
 if (!is_dir($sessionPath)) {
     mkdir($sessionPath, 0777, true);
 }
 ini_set('session.save_path', $sessionPath);
 ini_set('session.cookie_httponly', 1);
-ini_set('session.cookie_samesite', 'Lax');  // Changed from Strict to Lax for redirects
+ini_set('session.cookie_samesite', 'Lax');
 ini_set('session.cookie_path', '/');
 ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_lifetime', 86400);  // 24 hours
-// ini_set('session.cookie_secure', 1);  // Uncomment for HTTPS
+ini_set('session.cookie_lifetime', 86400);
 
-// Error reporting (disable in production)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+if (Env::bool('APP_DEBUG', true)) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+} else {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+}
 
-// Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Include database connection
 require_once __DIR__ . '/db.php';
-?>

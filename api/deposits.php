@@ -12,8 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-const MIN_DEPOSIT = 1.00;
-const MAX_DEPOSIT = 10000.00;
+define('MIN_DEPOSIT', Env::float('MIN_DEPOSIT', 1.00));
+define('MAX_DEPOSIT', Env::float('MAX_DEPOSIT', 10000.00));
 
 $response = ['success' => false];
 $method = $_SERVER['REQUEST_METHOD'];

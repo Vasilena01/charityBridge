@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-const MAX_QUANTITY_PER_PURCHASE = 100;
+define('MAX_QUANTITY_PER_PURCHASE', Env::int('MAX_QUANTITY_PER_PURCHASE', 100));
 
 $response = ['success' => false];
 $method = $_SERVER['REQUEST_METHOD'];
