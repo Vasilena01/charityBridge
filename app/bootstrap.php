@@ -33,18 +33,5 @@ if (Env::bool('APP_DEBUG', true)) {
     ini_set('display_errors', '0');
 }
 
-$sessionPath = $root . '/backend/sessions';
-if (!is_dir($sessionPath)) {
-    mkdir($sessionPath, 0777, true);
-}
-ini_set('session.save_path', $sessionPath);
-ini_set('session.cookie_httponly', '1');
-ini_set('session.cookie_samesite', 'Lax');
-ini_set('session.use_only_cookies', '1');
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 Url::init($_SERVER['REQUEST_URI'] ?? '/', Env::get('APP_URL_MARKER', 'charity-api'));
 View::setViewsDir($root . '/app/Views');

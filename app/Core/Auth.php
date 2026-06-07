@@ -1,29 +1,38 @@
 <?php
 namespace App\Core;
 
+use App\Models\RevokedToken;
 use App\Models\User;
 
 final class Auth
 {
     private static ?array $cachedUser = null;
+    private static ?int $cachedUserId = null;
+    private static bool $resolved = false;
 
     public static function login(int $userId): void
     {
-        $token = bin2hex(random_bytes(16));
-        $_SESSION['user_id']   = $userId;
-        $_SESSION['user_token'] = $token;
-        self::$cachedUser = null;
+        $token = self::issue($userId);
+        self::setCookie($token);
+        self::$cachedUser   = null;
+        self::$cachedUserId = $userId;
+        self::$resolved     = true;
     }
 
     public static function logout(): void
     {
-        $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
+        $cookieName = self::cookieName();
+        $raw = $_COOKIE[$cookieName] ?? null;
+        if ($raw !== null) {
+            $payload = self::verify($raw, skipRevocationCheck: true);
+            if ($payload !== null) {
+                RevokedToken::revoke($payload['jti'], (int)$payload['uid'], (int)$payload['exp']);
+            }
         }
-        session_destroy();
-        self::$cachedUser = null;
+        self::clearCookie();
+        self::$cachedUser   = null;
+        self::$cachedUserId = null;
+        self::$resolved     = true;
     }
 
     public static function check(): bool
@@ -33,10 +42,25 @@ final class Auth
 
     public static function currentUserId(): ?int
     {
-        if (isset($_SESSION['user_id'])) {
-            return (int)$_SESSION['user_id'];
+        if (self::$resolved) {
+            return self::$cachedUserId;
         }
-        return null;
+        self::$resolved = true;
+
+        $cookieName = self::cookieName();
+        $raw = $_COOKIE[$cookieName] ?? null;
+        if ($raw === null) {
+            return null;
+        }
+
+        $payload = self::verify($raw);
+        if ($payload === null) {
+            self::clearCookie();
+            return null;
+        }
+
+        self::$cachedUserId = (int)$payload['uid'];
+        return self::$cachedUserId;
     }
 
     public static function user(): ?array
@@ -73,5 +97,117 @@ final class Auth
     public static function refresh(): void
     {
         self::$cachedUser = null;
+    }
+
+    public static function issue(int $userId): string
+    {
+        $now    = time();
+        $ttl    = (int)Env::int('AUTH_TOKEN_TTL_SECONDS', 2592000);
+        $payload = [
+            'jti' => bin2hex(random_bytes(16)),
+            'uid' => $userId,
+            'iat' => $now,
+            'exp' => $now + $ttl,
+        ];
+        $body = self::base64UrlEncode(json_encode($payload, JSON_UNESCAPED_SLASHES));
+        $sig  = self::base64UrlEncode(self::hmac($body));
+        return $body . '.' . $sig;
+    }
+
+    public static function verify(string $token, bool $skipRevocationCheck = false): ?array
+    {
+        $parts = explode('.', $token);
+        if (count($parts) !== 2) {
+            return null;
+        }
+        [$body, $sig] = $parts;
+
+        $expected = self::base64UrlEncode(self::hmac($body));
+        if (!hash_equals($expected, $sig)) {
+            return null;
+        }
+
+        $json = self::base64UrlDecode($body);
+        if ($json === null) {
+            return null;
+        }
+        $payload = json_decode($json, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+        foreach (['jti', 'uid', 'iat', 'exp'] as $key) {
+            if (!isset($payload[$key])) {
+                return null;
+            }
+        }
+        if ((int)$payload['exp'] < time()) {
+            return null;
+        }
+
+        if (!$skipRevocationCheck && RevokedToken::isRevoked($payload['jti'])) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    public static function setCookie(string $token): void
+    {
+        $cookieName = self::cookieName();
+        $ttl        = (int)Env::int('AUTH_TOKEN_TTL_SECONDS', 2592000);
+        $secure     = Env::get('APP_ENV', 'local') !== 'local';
+        $path       = Url::$prefix === '' ? '/' : Url::$prefix . '/';
+
+        setcookie($cookieName, $token, [
+            'expires'  => time() + $ttl,
+            'path'     => $path,
+            'httponly' => true,
+            'samesite' => 'Lax',
+            'secure'   => $secure,
+        ]);
+        $_COOKIE[$cookieName] = $token;
+    }
+
+    public static function clearCookie(): void
+    {
+        $cookieName = self::cookieName();
+        $secure     = Env::get('APP_ENV', 'local') !== 'local';
+        $path       = Url::$prefix === '' ? '/' : Url::$prefix . '/';
+
+        setcookie($cookieName, '', [
+            'expires'  => time() - 3600,
+            'path'     => $path,
+            'httponly' => true,
+            'samesite' => 'Lax',
+            'secure'   => $secure,
+        ]);
+        unset($_COOKIE[$cookieName]);
+    }
+
+    private static function cookieName(): string
+    {
+        return (string)Env::get('AUTH_COOKIE_NAME', 'auth');
+    }
+
+    private static function hmac(string $data): string
+    {
+        $secret = (string)Env::get('AUTH_SECRET', '');
+        return hash_hmac('sha256', $data, $secret, true);
+    }
+
+    private static function base64UrlEncode(string $bytes): string
+    {
+        return rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
+    }
+
+    private static function base64UrlDecode(string $b64): ?string
+    {
+        $padded = $b64;
+        $padding = strlen($padded) % 4;
+        if ($padding > 0) {
+            $padded .= str_repeat('=', 4 - $padding);
+        }
+        $decoded = base64_decode(strtr($padded, '-_', '+/'), true);
+        return $decoded === false ? null : $decoded;
     }
 }
