@@ -1,0 +1,50 @@
+<?php
+
+use App\Core\Env;
+use App\Core\Url;
+use App\Core\View;
+
+$root = dirname(__DIR__);
+
+spl_autoload_register(function (string $class) use ($root): void {
+    if (!str_starts_with($class, 'App\\')) {
+        return;
+    }
+    $relative = substr($class, 4);
+    $file = $root . '/app/' . str_replace('\\', '/', $relative) . '.php';
+    if (is_file($file)) {
+        require $file;
+    }
+});
+
+require_once __DIR__ . '/Core/helpers.php';
+
+if (is_file($root . '/vendor/autoload.php')) {
+    require_once $root . '/vendor/autoload.php';
+}
+
+Env::load($root . '/.env');
+
+if (Env::bool('APP_DEBUG', true)) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+} else {
+    error_reporting(0);
+    ini_set('display_errors', '0');
+}
+
+$sessionPath = $root . '/backend/sessions';
+if (!is_dir($sessionPath)) {
+    mkdir($sessionPath, 0777, true);
+}
+ini_set('session.save_path', $sessionPath);
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_samesite', 'Lax');
+ini_set('session.use_only_cookies', '1');
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+Url::init($_SERVER['REQUEST_URI'] ?? '/', Env::get('APP_URL_MARKER', 'charity-api'));
+View::setViewsDir($root . '/app/Views');

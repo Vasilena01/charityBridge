@@ -1,0 +1,20 @@
+{
+    "name": "charitybridge/app",
+    "description": "CharityBridge — a platform for charitable campaigns",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        },
+        "files": [
+            "app/Core/helpers.php"
+        ]
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
