@@ -1,6 +1,3 @@
-SET NAMES utf8mb4;
-SET time_zone = '+00:00';
-
 CREATE TABLE IF NOT EXISTS users (
     id              INT             NOT NULL AUTO_INCREMENT,
     email           VARCHAR(255)    NOT NULL,
@@ -152,30 +149,3 @@ CREATE TABLE IF NOT EXISTS revoked_tokens (
     KEY idx_revoked_expires (expires_at),
     CONSTRAINT fk_revoked_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- SEED: uncomment the block below to seed a few demo accounts
--- (passwords are bcrypt hashes of "Password123!")
--- INSERT INTO users (email, password_hash, role, first_name, last_name, virtual_balance) VALUES
---   ('volunteer@example.com', '$2y$10$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV', 'volunteer', 'Vera',  'Volunteer', 100.00),
---   ('organizer@example.com', '$2y$10$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV', 'organizer', 'Olive', 'Organizer', 0.00),
---   ('company@example.com',   '$2y$10$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUV', 'company',   'Carl',  'Company',   500.00);
-
--- ============================================================================
--- How to run this file
--- ============================================================================
---
--- Docker:
---   docker compose up -d                   # MySQL applies this on first boot
---   docker compose down -v                 # drop the volume to re-apply
---
--- Local (existing database + user):
---   mysql -h 127.0.0.1 -P 3306 -u charity -pcharity charitybridge < database/schema.sql
---
--- Local (bootstrap from scratch as root):
---   mysql -h 127.0.0.1 -P 3306 -u root -p \
---       -e "CREATE DATABASE IF NOT EXISTS charitybridge
---             CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
---           CREATE USER IF NOT EXISTS 'charity'@'%' IDENTIFIED BY 'charity';
---           GRANT ALL ON charitybridge.* TO 'charity'@'%';
---           FLUSH PRIVILEGES;"
---   mysql -h 127.0.0.1 -P 3306 -u charity -pcharity charitybridge < database/schema.sql
