@@ -149,3 +149,9 @@ CREATE TABLE IF NOT EXISTS revoked_tokens (
     KEY idx_revoked_expires (expires_at),
     CONSTRAINT fk_revoked_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- SEED: demo accounts (password for all three is "Password123!")
+INSERT INTO users (email, password_hash, role, first_name, last_name, virtual_balance) VALUES
+  ('volunteer@example.com', '$2y$12$g8QZB4DsuQS6y/X4rtPMJOe1Z2UYhgjdQzbRzWxm9kGGvlVOPXnVe', 'volunteer', 'Vera',  'Volunteer', 100.00),
+  ('organizer@example.com', '$2y$12$ijOOowP/I9naEPe74mgnjeJG20./FkKOKTOuJpxO292EYbKqSLdtu', 'organizer', 'Olive', 'Organizer', 0.00),
+  ('company@example.com',   '$2y$12$x6Zn7jlP/sUegCDWEtJsHO5UVLze2oGEWuLAoD28lPdboOh/uJlDm', 'company',   'Carl',  'Company',   500.00);
