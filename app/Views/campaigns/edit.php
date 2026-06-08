@@ -44,10 +44,7 @@ $typeOptions = [
         </div>
 
         <div class="form-actions">
-            <button type="submit" name="action" value="save" class="btn btn-secondary">Save Changes</button>
-            <?php if ($campaign['status'] === 'draft'): ?>
-                <button type="submit" name="action" value="publish" class="btn btn-primary">Publish Campaign</button>
-            <?php endif ?>
+            <button type="submit" name="action" value="save" class="btn btn-primary">Save Changes</button>
         </div>
     </form>
 
@@ -67,68 +64,74 @@ $typeOptions = [
                     $cost = (float)$item['production_cost'];
                     $don  = (float)$item['donation_amount'];
                 ?>
-                    <form method="POST" action="<?= url('campaign-items/' . $item['id']) ?>" class="item-row" style="display:grid;grid-template-columns:repeat(5,1fr) auto;gap:8px;align-items:end;margin-bottom:8px;border:1px solid #eee;padding:10px;border-radius:6px;">
-                        <div class="item-field">
-                            <label>Name</label>
-                            <input type="text" name="name" maxlength="255" required value="<?= e($item['name']) ?>">
+                    <div class="item-row-wrap" style="border:1px solid #eee;padding:18px;border-radius:8px;margin-bottom:12px;">
+                        <form method="POST" action="<?= url('campaign-items/' . $item['id']) ?>" id="item-form-<?= (int)$item['id'] ?>" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;">
+                            <div class="form-group" style="grid-column:1 / -1;margin:0;">
+                                <label>Name</label>
+                                <input type="text" name="name" maxlength="255" required value="<?= e($item['name']) ?>">
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label>Type</label>
+                                <select name="item_type">
+                                    <option value="good"    <?= $item['item_type'] === 'good'    ? 'selected' : '' ?>>Good</option>
+                                    <option value="service" <?= $item['item_type'] === 'service' ? 'selected' : '' ?>>Service</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label>Quantity</label>
+                                <input type="number" name="quantity_available" min="-1" step="1" value="<?= e($item['quantity_available']) ?>" title="-1 for unlimited">
+                                <small style="color:#7f8c8d;">Use -1 for unlimited</small>
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label>Production cost</label>
+                                <input type="number" name="production_cost" min="0" step="0.01" value="<?= e(number_format($cost, 2, '.', '')) ?>" required>
+                            </div>
+                            <div class="form-group" style="margin:0;">
+                                <label>Donation</label>
+                                <input type="number" name="donation_amount" min="0" step="0.01" value="<?= e(number_format($don, 2, '.', '')) ?>" required>
+                            </div>
+                        </form>
+                        <div style="display:flex;justify-content:flex-end;gap:10px;align-items:center;margin-top:14px;">
+                            <form method="POST" action="<?= url('campaign-items/' . $item['id'] . '/delete') ?>" onsubmit="return confirm('Delete this item?')" style="margin:0;">
+                                <button type="submit" class="item-delete-btn" style="background:none;border:1px solid #e74c3c;color:#e74c3c;cursor:pointer;padding:9px 18px;border-radius:999px;font-weight:600;font-size:14px;">Delete</button>
+                            </form>
+                            <button type="submit" form="item-form-<?= (int)$item['id'] ?>" class="btn btn-primary">Save</button>
                         </div>
-                        <div class="item-field">
-                            <label>Type</label>
-                            <select name="item_type">
-                                <option value="good"    <?= $item['item_type'] === 'good'    ? 'selected' : '' ?>>Good</option>
-                                <option value="service" <?= $item['item_type'] === 'service' ? 'selected' : '' ?>>Service</option>
-                            </select>
-                        </div>
-                        <div class="item-field">
-                            <label>Cost</label>
-                            <input type="number" name="production_cost" min="0" step="0.01" value="<?= e(number_format($cost, 2, '.', '')) ?>" required>
-                        </div>
-                        <div class="item-field">
-                            <label>Donation</label>
-                            <input type="number" name="donation_amount" min="0" step="0.01" value="<?= e(number_format($don, 2, '.', '')) ?>" required>
-                        </div>
-                        <div class="item-field">
-                            <label>Qty</label>
-                            <input type="number" name="quantity_available" min="-1" step="1" value="<?= e($item['quantity_available']) ?>" title="-1 for unlimited">
-                        </div>
-                        <div class="item-field" style="display:flex;flex-direction:column;gap:4px;">
-                            <button type="submit" class="btn btn-secondary btn-small">Save</button>
-                        </div>
-                    </form>
-                    <form method="POST" action="<?= url('campaign-items/' . $item['id'] . '/delete') ?>" style="margin:-8px 0 12px;text-align:right;" onsubmit="return confirm('Delete this item?')">
-                        <button type="submit" class="btn-link" style="background:none;border:none;color:#e74c3c;cursor:pointer;">× Delete item</button>
-                    </form>
+                    </div>
                 <?php endforeach ?>
             </div>
         <?php endif ?>
 
         <details>
             <summary class="add-item-btn" style="cursor:pointer;list-style:none;display:inline-block;padding:10px 16px;border:1px dashed #ff6b6b;color:#ff6b6b;border-radius:8px;margin-top:10px;">+ Add Item</summary>
-            <form method="POST" action="<?= url('campaigns/' . $campaign['id'] . '/items') ?>" style="margin-top:14px;display:grid;grid-template-columns:repeat(5,1fr) auto;gap:8px;align-items:end;border:1px solid #eee;padding:12px;border-radius:8px;">
-                <div class="item-field">
+            <form method="POST" action="<?= url('campaigns/' . $campaign['id'] . '/items') ?>" style="margin-top:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;border:1px solid #eee;padding:18px;border-radius:8px;">
+                <div class="form-group" style="grid-column:1 / -1;margin:0;">
                     <label>Name</label>
-                    <input type="text" name="name" maxlength="255" required>
+                    <input type="text" name="name" maxlength="255" required placeholder="e.g. Hand-knit scarf">
                 </div>
-                <div class="item-field">
+                <div class="form-group" style="margin:0;">
                     <label>Type</label>
                     <select name="item_type">
                         <option value="good">Good</option>
                         <option value="service">Service</option>
                     </select>
                 </div>
-                <div class="item-field">
-                    <label>Cost</label>
+                <div class="form-group" style="margin:0;">
+                    <label>Quantity</label>
+                    <input type="number" name="quantity_available" min="-1" step="1" value="1">
+                    <small style="color:#7f8c8d;">Use -1 for unlimited</small>
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label>Production cost</label>
                     <input type="number" name="production_cost" min="0" step="0.01" value="0.00" required>
                 </div>
-                <div class="item-field">
+                <div class="form-group" style="margin:0;">
                     <label>Donation</label>
                     <input type="number" name="donation_amount" min="0" step="0.01" value="0.00" required>
                 </div>
-                <div class="item-field">
-                    <label>Qty</label>
-                    <input type="number" name="quantity_available" min="-1" step="1" value="1">
+                <div style="grid-column:1 / -1;display:flex;justify-content:flex-end;">
+                    <button type="submit" class="btn btn-primary">Add item</button>
                 </div>
-                <button type="submit" class="btn btn-primary btn-small">Add</button>
             </form>
         </details>
     </div>

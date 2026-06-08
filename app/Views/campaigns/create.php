@@ -52,8 +52,7 @@
         <p style="color:#7f8c8d;font-size:13px;">You can add items &amp; services after creating the campaign.</p>
 
         <div class="form-actions">
-            <button type="submit" name="action" value="draft" class="btn btn-secondary">Save as Draft</button>
-            <button type="submit" name="action" value="publish" class="btn btn-primary">Publish Campaign</button>
+            <button type="submit" class="btn btn-primary">Publish Campaign</button>
         </div>
 
         <div class="form-cancel">

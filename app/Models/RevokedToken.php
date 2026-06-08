@@ -23,7 +23,15 @@ final class RevokedToken
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )'
         );
-        Db::pdo()->exec('CREATE INDEX IF NOT EXISTS idx_revoked_expires ON revoked_tokens (expires_at)');
+        $exists = Db::pdo()->query(
+            "SELECT 1 FROM information_schema.statistics
+             WHERE table_schema = DATABASE()
+               AND table_name = 'revoked_tokens'
+               AND index_name = 'idx_revoked_expires'"
+        )->fetchColumn();
+        if (!$exists) {
+            Db::pdo()->exec('CREATE INDEX idx_revoked_expires ON revoked_tokens (expires_at)');
+        }
     }
 
     public static function isRevoked(string $jti): bool

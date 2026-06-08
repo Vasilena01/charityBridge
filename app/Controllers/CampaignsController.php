@@ -76,7 +76,6 @@ final class CampaignsController
         $type        = (string)$request->input('campaign_type', '');
         $goalRaw     = (string)$request->input('goal_amount', '');
         $deadline    = (string)$request->input('deadline', '');
-        $publish     = $request->input('action') === 'publish';
 
         $errors = [];
         if ($title === '')                                     $errors[] = 'Title is required.';
@@ -118,10 +117,10 @@ final class CampaignsController
             'campaign_type' => $type,
             'goal_amount'   => $goal,
             'deadline'      => date('Y-m-d H:i:s', $deadlineTs),
-            'status'        => $publish ? 'published' : 'draft',
+            'status'        => 'published',
         ]);
 
-        Flash::set('success', $publish ? 'Campaign published.' : 'Campaign saved as draft.');
+        Flash::set('success', 'Campaign published.');
         Response::redirect(Url::to('campaigns/' . $campaignId . '/edit'));
     }
 
@@ -171,7 +170,6 @@ final class CampaignsController
         $type        = (string)$request->input('campaign_type', '');
         $goalRaw     = (string)$request->input('goal_amount', '');
         $deadline    = (string)$request->input('deadline', '');
-        $action      = (string)$request->input('action', 'save');
 
         $errors = [];
         if ($title === '')                                     $errors[] = 'Title is required.';
@@ -205,12 +203,9 @@ final class CampaignsController
             'goal_amount'   => $goal,
             'deadline'      => date('Y-m-d H:i:s', $deadlineTs),
         ];
-        if ($action === 'publish') {
-            $fields['status'] = 'published';
-        }
 
         Campaign::update($id, $fields);
-        Flash::set('success', $action === 'publish' ? 'Campaign published.' : 'Campaign saved.');
+        Flash::set('success', 'Campaign saved.');
         Response::redirect(Url::to('campaigns/' . $id . '/edit'));
     }
 

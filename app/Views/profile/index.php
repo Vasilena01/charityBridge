@@ -101,7 +101,7 @@
         <?php else: ?>
             <table class="purchases-table">
                 <thead>
-                    <tr><th>Date</th><th>Campaign</th><th>Type</th><th>Detail</th><th>Status</th><th></th></tr>
+                    <tr><th>Date</th><th>Campaign</th><th>Type</th><th>Detail</th><th></th></tr>
                 </thead>
                 <tbody>
                     <?php foreach ($contributions as $c):
@@ -115,8 +115,12 @@
                             <td><?= e(date('Y-m-d', strtotime($c['created_at']))) ?></td>
                             <td><?= e($c['campaign_title']) ?></td>
                             <td><?= e($c['type']) ?></td>
-                            <td><?= $detail ?></td>
-                            <td><span class="offer-status-badge offer-status-<?= e($c['status']) ?>"><?= e($c['status']) ?></span></td>
+                            <td>
+                                <?= $detail ?>
+                                <?php if ($c['status'] === 'cancelled'): ?>
+                                    <span style="color:#95a5a6;font-size:12px;margin-left:6px;">(cancelled)</span>
+                                <?php endif ?>
+                            </td>
                             <td class="offer-row-actions">
                                 <?php if ($c['type'] !== 'monetary' && $c['status'] === 'pending'): ?>
                                     <form method="POST" action="<?= url('contributions/' . $c['id'] . '/cancel') ?>" onsubmit="return confirm('Cancel this contribution?')" style="display:inline;">

@@ -33,9 +33,9 @@ $typeNames = [
             <label for="filter-search">Search:</label>
             <input type="text" id="filter-search" name="search" value="<?= e($filters['search'] ?? '') ?>" placeholder="Search campaigns...">
         </div>
-        <div class="filter-group">
-            <button type="submit" class="btn btn-primary">Apply</button>
-            <a href="<?= url('campaigns') ?>" class="btn btn-secondary">Clear</a>
+        <div class="filter-group filter-actions" style="flex-direction:row;gap:12px;align-items:flex-end;">
+            <button type="submit" class="btn btn-primary" style="flex:1;padding:12px 20px;">Apply</button>
+            <a href="<?= url('campaigns') ?>" class="btn btn-secondary" style="flex:1;padding:12px 20px;text-align:center;">Clear</a>
         </div>
     </form>
 </div>

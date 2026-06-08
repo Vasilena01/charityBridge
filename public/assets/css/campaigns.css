@@ -53,6 +53,23 @@
     padding: 10px 20px;
 }
 
+.filter-actions {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+    justify-content: flex-end;
+}
+
+.filter-actions .btn,
+.filter-actions .btn-primary,
+.filter-actions .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    white-space: nowrap;
+}
+
 .campaigns-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));

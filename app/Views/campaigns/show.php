@@ -189,29 +189,29 @@ $canContribute = $canBuy && $campaign['status'] === 'published';
                         <summary class="btn btn-primary" style="cursor:pointer;list-style:none;text-align:center;">
                             <?= $user['role'] === 'company' ? 'Support Campaign' : 'Donate / Volunteer' ?>
                         </summary>
-                        <form method="POST" action="<?= url('campaigns/' . $campaign['id'] . '/contributions') ?>" style="margin-top:14px;padding:14px;border:1px solid #eee;border-radius:8px;">
+                        <form method="POST" action="<?= url('campaigns/' . $campaign['id'] . '/contributions') ?>" data-contribution-form style="margin-top:14px;padding:14px;border:1px solid #eee;border-radius:8px;">
                             <div class="form-group">
                                 <label>Type</label>
-                                <select name="type" required>
+                                <select name="type" required data-contribution-type>
                                     <option value="monetary">Donate money</option>
                                     <option value="hours">Volunteer hours</option>
                                     <option value="goods">Pledge goods</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <label>Amount (for money)</label>
+                            <div class="form-group" data-contribution-field="monetary">
+                                <label>Amount</label>
                                 <input type="number" name="amount" min="0.01" step="0.01" placeholder="0.00">
                                 <small style="color:#7f8c8d;">Your balance: <?= number_format((float)($user['virtual_balance'] ?? 0), 2) ?></small>
                             </div>
-                            <div class="form-group">
-                                <label>Hours (for volunteering)</label>
+                            <div class="form-group" data-contribution-field="hours">
+                                <label>Hours</label>
                                 <input type="number" name="hours_count" min="0.5" step="0.5" placeholder="e.g. 4">
                             </div>
-                            <div class="form-group">
-                                <label>Goods description (for goods)</label>
+                            <div class="form-group" data-contribution-field="goods">
+                                <label>Goods description</label>
                                 <textarea name="goods_description" maxlength="1000" placeholder="e.g. 10 boxes of canned food"></textarea>
                             </div>
-                            <div class="form-group">
+                            <div class="form-group" data-contribution-field="goods">
                                 <label>Estimated value of goods (optional)</label>
                                 <input type="number" name="goods_estimated_value" min="0" step="0.01" placeholder="0.00">
                             </div>
@@ -221,6 +221,28 @@ $canContribute = $canBuy && $campaign['status'] === 'published';
                             </div>
                             <button type="submit" class="btn btn-primary">Submit</button>
                         </form>
+                        <script>
+                            (function () {
+                                document.querySelectorAll('[data-contribution-form]').forEach(function (form) {
+                                    var select = form.querySelector('[data-contribution-type]');
+                                    if (!select) return;
+                                    var fields = form.querySelectorAll('[data-contribution-field]');
+                                    function sync() {
+                                        var current = select.value;
+                                        fields.forEach(function (group) {
+                                            var visible = group.dataset.contributionField === current;
+                                            group.style.display = visible ? '' : 'none';
+                                            group.querySelectorAll('input, textarea').forEach(function (input) {
+                                                input.disabled = !visible;
+                                                if (!visible) input.value = '';
+                                            });
+                                        });
+                                    }
+                                    select.addEventListener('change', sync);
+                                    sync();
+                                });
+                            })();
+                        </script>
                     </details>
                 <?php endif ?>
 

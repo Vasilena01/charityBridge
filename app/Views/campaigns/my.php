@@ -9,13 +9,11 @@
 <?php
 $total     = count($campaigns);
 $active    = count(array_filter($campaigns, fn($c) => $c['status'] === 'published'));
-$draft     = count(array_filter($campaigns, fn($c) => $c['status'] === 'draft'));
 $completed = count(array_filter($campaigns, fn($c) => in_array($c['status'], ['successful', 'ended'], true)));
 ?>
 <div class="stats-grid">
     <div class="stat-card"><h3><?= $total ?></h3><p>Total Campaigns</p></div>
     <div class="stat-card"><h3><?= $active ?></h3><p>Active</p></div>
-    <div class="stat-card"><h3><?= $draft ?></h3><p>Drafts</p></div>
     <div class="stat-card"><h3><?= $completed ?></h3><p>Completed</p></div>
 </div>
 
@@ -56,9 +54,7 @@ $completed = count(array_filter($campaigns, fn($c) => in_array($c['status'], ['s
                 <span class="progress-percentage"><?= number_format($progress, 1) ?>% of goal</span>
             </div>
             <div class="campaign-actions" style="display:flex;gap:8px;margin-top:10px;">
-                <?php if ($c['status'] !== 'draft'): ?>
-                    <a href="<?= url('campaigns/' . $c['id']) ?>" class="btn btn-primary btn-small">View Details</a>
-                <?php endif ?>
+                <a href="<?= url('campaigns/' . $c['id']) ?>" class="btn btn-primary btn-small">View Details</a>
                 <a href="<?= url('campaigns/' . $c['id'] . '/edit') ?>" class="btn btn-secondary btn-small">Edit</a>
                 <form method="POST" action="<?= url('campaigns/' . $c['id'] . '/delete') ?>" onsubmit="return confirm('Are you sure you want to delete &quot;<?= e(addslashes($c['title'])) ?>&quot;? This action cannot be undone.')" style="display:inline;">
                     <button type="submit" class="btn btn-secondary btn-small btn-delete">Delete</button>
