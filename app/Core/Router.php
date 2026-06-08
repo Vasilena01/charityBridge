@@ -3,7 +3,6 @@ namespace App\Core;
 
 final class Router
 {
-    /** @var array<int,array{0:string,1:string,2:array}> */
     private array $routes;
 
     public function __construct(array $routes)
