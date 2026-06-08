@@ -33,5 +33,9 @@ if (Env::bool('APP_DEBUG', true)) {
     ini_set('display_errors', '0');
 }
 
-Url::init($_SERVER['REQUEST_URI'] ?? '/', Env::get('APP_URL_MARKER', 'charity-api'));
+Url::init(
+    $_SERVER['SCRIPT_NAME'] ?? '/index.php',
+    $_SERVER['REQUEST_URI'] ?? '/',
+    Env::get('APP_URL_MARKER', '')
+);
 View::setViewsDir($root . '/app/Views');
